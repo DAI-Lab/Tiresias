@@ -1,0 +1,22 @@
+#!/usr/bin/env python
+import argparse
+import threading
+from time import sleep
+import tiresias.client as client
+import tiresias.database as database
+
+if __name__ == "__main__":
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--server', type=str, default="http://localhost:3000/", help="The server.")
+    parser.add_argument('--db_port', type=int, default=8000, help="The port to listen on.")
+    parser.add_argument('--db_dir', type=str, default="/tmp/tiresias", help="The target data directory.")
+    args = parser.parse_args()
+
+    db_thread = threading.Thread(target=database.run, args=(args.db_dir, args.db_port))
+    db_thread.start()
+
+    client_thread = threading.Thread(target=client.run, args=(args.server, args.db_port))
+    client_thread.start()
+
+    while db_thread.is_alive() and client_thread.is_alive():
+        sleep(10)
