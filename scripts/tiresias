@@ -1,9 +1,11 @@
-#!/usr/bin/env python
+#!/usr/bin/python
 import argparse
 import threading
 from time import sleep
 import tiresias.client as client
 import tiresias.database as database
+from setproctitle import setproctitle
+setproctitle("tiresias")
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()

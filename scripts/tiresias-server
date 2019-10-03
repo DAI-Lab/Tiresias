@@ -1,6 +1,8 @@
-#!/usr/bin/env python
+#!/usr/bin/python
 import argparse
 import tiresias.server as server
+from setproctitle import setproctitle
+setproctitle("tiresias-server")
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()

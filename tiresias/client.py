@@ -30,7 +30,7 @@ def run(server="http://localhost:3000", datastore_port=8000):
             rows = execute(datastore_port, query["featurizer"])
             if query['type'] == 'basic': # basic queries return a single number
                 value = rows[0] # [{}] -> {}
-                value = list(value.values())[0] # {a: #} -> #
+                value = float(list(value.values())[0]) # {a: #} -> #
             if query['type'] == 'generalized': # generalized queries return a single dictionary
                 value = rows[0] # [{}] -> {}
             approve_query(server, query["id"], value)
