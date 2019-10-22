@@ -1,5 +1,5 @@
 from tiresias.client.storage import execute_sql
-from tiresias.core.federated_learning import compute
+from tiresias.core.federated_learning import gradients
 from tiresias.core.mechanisms import finite_categorical, bounded_continuous
 
 def handle(query, data_dir):
@@ -101,4 +101,4 @@ def handle_fl(query, data):
     assert type(data) == list, "Featurizers should return rows."
     assert len(data) == 1, "Featurizers for basic queries should return a single row."
     assert type(data[0]) == dict, "Featurizers should return rows of dictionaries."
-    return compute(data["aggregator"], data["weights"], data[0])
+    return gradients(query["aggregator"], query["weights"], data[0])

@@ -1,7 +1,9 @@
 import requests
 import tiresias.client as client
+import tiresias.client.api as api
 import tiresias.client.storage as storage
 import tiresias.client.handler as handler
+
 from json import dumps
 from time import sleep
 from multiprocessing import Process
@@ -38,14 +40,14 @@ def test_basic(tmpdir):
     result = handler.handle(query, tmpdir)
     assert result == 15.0
 
-def test_remote_basic(tmpdir):
+def test_api_basic(tmpdir):
     storage_server = Process(target=client.storage_server, args=(tmpdir, 8000))
     storage_server.start()
     sleep(1)
 
     try:
-        # Register a dummy app with some dummy data    
-        requests.get("http://localhost:8000/app/example_app/register", params={"schema": dumps({
+        # Register a dummy app with some dummy data through the REST API
+        api.register_app(8000, "example_app", {
             "tableA": {
                 "description": "This table contains A.",
                 "columns": {
@@ -55,8 +57,8 @@ def test_remote_basic(tmpdir):
                     }
                 }
             }
-        })})
-        requests.get("http://localhost:8000/app/example_app/insert", params={"payload": dumps({
+        })
+        api.insert_payload(8000, "example_app", {
             "tableA": [
                 {"some_var": 1.0},
                 {"some_var": 2.0},
@@ -64,7 +66,7 @@ def test_remote_basic(tmpdir):
                 {"some_var": 4.0},
                 {"some_var": 5.0},
             ]
-        })})
+        })
 
         # Make sure the data was inserted correctly
         query = {
