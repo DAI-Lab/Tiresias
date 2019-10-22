@@ -1,6 +1,7 @@
 # Production
 bottle==0.12.17
 requests==2.21.0
+setproctitle==1.1.10
 
 # Dev/Deployment
 sphinx

@@ -10,10 +10,12 @@ from tiresias.client.storage import initialize, app_columns, execute_sql, regist
 def run(server="http://localhost:3000", data_dir="/tmp/tiresias", port=8000):
     storage_thread = threading.Thread(target=storage_server, args=(data_dir, port))
     storage_thread.start()
+
     query_thread = threading.Thread(target=query_handler, args=(server, data_dir))
     query_thread.start()
-    while storage_thread.is_alive() and query_thread.is_alive():
-        sleep(10)
+
+    storage_thread.join()
+    query_thread.join()
 
 def storage_server(data_dir="/tmp/tiresias", port=8000):
     from bottle import Bottle, request, response
@@ -67,13 +69,16 @@ def storage_server(data_dir="/tmp/tiresias", port=8000):
 def query_handler(server, data_dir):
     handled = set()
     while True:
-        queries = loads(requests.get(server).text).values()
-        for query in queries:
-            if query["id"] in handled:
-                continue
-            result = handle(query, data_dir)
-            requests.get(urllib.parse.urljoin(server, "/query/%s/submit" % query["id"]), params={
-                "payload": dumps(result)
-            })
-            handled.add(query["id"])
+        try:
+            queries = loads(requests.get(server).text).values()
+            for query in queries:
+                if query["id"] in handled:
+                    continue
+                result = handle(query, data_dir)
+                requests.get(urllib.parse.urljoin(server, "/query/%s/submit" % query["id"]), params={
+                    "payload": dumps(result)
+                })
+                handled.add(query["id"])
+        except requests.exceptions.ConnectionError:
+            print("Server at %s is offline." % server)
         sleep(1)

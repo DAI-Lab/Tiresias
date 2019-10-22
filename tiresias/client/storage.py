@@ -175,6 +175,7 @@ def insert_payload(data_dir, app_name, payload):
         }]
     }
     """
+    assert os.path.exists(os.path.join(data_dir, "%s.db" % app_name)), "App not found."
     connection = sqlite3.connect(os.path.join(data_dir, "%s.db" % app_name))
     cursor = connection.cursor()
 
