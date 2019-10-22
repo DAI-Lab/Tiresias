@@ -4,7 +4,6 @@ import threading
 import urllib.parse
 from time import sleep
 from json import loads, dumps
-from bottle import Bottle, request, response
 from tiresias.client.handler import handle
 from tiresias.client.storage import initialize, app_columns, execute_sql, register_app, insert_payload
 
@@ -17,6 +16,8 @@ def run(server="http://localhost:3000", data_dir="/tmp/tiresias", port=8000):
         sleep(10)
 
 def storage_server(data_dir="/tmp/tiresias", port=8000):
+    from bottle import Bottle, request, response
+    
     api = Bottle()
     initialize(data_dir)
     api.config['data_dir'] = data_dir

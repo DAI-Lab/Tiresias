@@ -67,12 +67,13 @@ def finite_categorical(x, domain, epsilon):
     This function applies randomized response to a categorical variable.
     """
     assert x in domain
+    assert len(set(domain)) == len(domain)
     if epsilon == float("inf"):
         return x
     p = (np.exp(epsilon) - 1) / (len(domain) - 1 + np.exp(epsilon))
     if np.random.random() < p:
         return x
-    return np.random.choice(domain)
+    return np.random.choice(list(domain))
 
 def bounded_continuous(x, low, high, epsilon):
     """

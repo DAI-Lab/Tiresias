@@ -55,6 +55,7 @@ def handle_bounded(query, data):
                 value = bounds["default"]
             domain = set(bounds["values"])
             domain.add(bounds["default"])
+            print(value, domain)
             return finite_categorical(value, domain, epsilon)
         return ValueError("Unknown bounds.")
 

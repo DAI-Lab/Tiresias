@@ -30,6 +30,7 @@ Contributing
 To set up the repository for local development:
 
     $ pip install -e .
+    $ pytest
 
 Example
 -------
