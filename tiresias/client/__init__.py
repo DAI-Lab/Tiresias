@@ -4,6 +4,7 @@ import threading
 import urllib.parse
 from time import sleep
 from json import loads, dumps
+from tiresias.server import api
 from tiresias.client.handler import handle
 from tiresias.client.storage import initialize, app_columns, execute_sql, register_app, insert_payload
 
@@ -70,14 +71,11 @@ def query_handler(server, data_dir):
     handled = set()
     while True:
         try:
-            queries = loads(requests.get(server).text).values()
-            for query in queries:
+            for query in api.list_queries(server):
                 if query["id"] in handled:
                     continue
                 result = handle(query, data_dir)
-                requests.get(urllib.parse.urljoin(server, "/query/%s/submit" % query["id"]), params={
-                    "payload": dumps(result)
-                })
+                api.approve_query(server, query["id"], result)
                 handled.add(query["id"])
         except requests.exceptions.ConnectionError:
             print("Server at %s is offline." % server)
