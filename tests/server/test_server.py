@@ -2,6 +2,9 @@ from time import sleep
 from random import random
 from multiprocessing import Process
 import tiresias.server as server
+import tiresias.server.api
+import tiresias.client as client
+import tiresias.client.api
 
 def test_create_query():
     api_server = Process(target=server.run, args=(3000,))
@@ -53,4 +56,110 @@ def test_approve_query():
         assert abs(queries[query_id]["result"] - 100.0) < 10.0
 
     finally:
+        api_server.terminate()
+
+def test_server_client_basic(tmpdir):
+    api_server = Process(target=server.run, args=(3000,))
+    api_server.start()
+    sleep(1)
+
+    client_server = Process(target=client.run, args=("http://localhost:3000", tmpdir, 8000))
+    client_server.start()
+    sleep(1)
+
+    try:
+        # Register a dummy app with some dummy data through the REST API
+        client.api.register_app(8000, "example_app", {
+            "tableA": {
+                "description": "This table contains A.",
+                "columns": {
+                    "some_var": {
+                        "type": "float",
+                        "description": "This column contains 1."
+                    }
+                }
+            }
+        })
+        client.api.insert_payload(8000, "example_app", {
+            "tableA": [
+                {"some_var": 1.0},
+                {"some_var": 2.0},
+                {"some_var": 3.0},
+                {"some_var": 4.0},
+                {"some_var": 5.0},
+            ]
+        })
+
+        # Submit a query
+        query_id = server.api.create_query("http://localhost:3000/", {
+            "type": "basic",
+            "epsilon": 100.0,
+            "featurizer": "SELECT sum(some_var) FROM example_app.tableA",
+            "aggregator": "mean"
+        })
+        sleep(1)
+
+        # Check that the client responded to the query
+        queries = server.api.list_queries("http://localhost:3000/")
+        assert len(queries) == 1
+        assert queries[query_id]["id"] == query_id
+        assert queries[query_id]["count"] == 1 # One data point
+
+    finally:
+        client_server.terminate()
+        api_server.terminate()
+
+def test_server_client_with_values(tmpdir):
+    api_server = Process(target=server.run, args=(3000,))
+    api_server.start()
+    sleep(1)
+
+    client_server = Process(target=client.run, args=("http://localhost:3000", tmpdir, 8000))
+    client_server.start()
+    sleep(1)
+
+    try:
+        # Register a dummy app with some dummy data through the REST API
+        client.api.register_app(8000, "example_app", {
+            "tableA": {
+                "description": "This table contains A.",
+                "columns": {
+                    "some_var": {
+                        "type": "float",
+                        "description": "This column contains 1."
+                    }
+                }
+            }
+        })
+        client.api.insert_payload(8000, "example_app", {
+            "tableA": [
+                {"some_var": 100.0},
+                {"some_var": 110.0},
+                {"some_var": 90.0}
+            ]
+        })
+
+        # Submit a query
+        query_id = server.api.create_query("http://localhost:3000/", {
+            "type": "basic",
+            "epsilon": 10000.0,
+            "featurizer": "SELECT avg(some_var) FROM example_app.tableA",
+            "aggregator": "mean"
+        })
+        sleep(1)
+
+        # Submit some dummy data directly without using the client
+        for _ in range(9):
+             server.api.approve_query("http://localhost:3000/", query_id, 100.0 + random())
+        sleep(1)
+
+        # Check that the client responded to the query
+        queries = server.api.list_queries("http://localhost:3000/")
+        assert len(queries) == 1
+        assert queries[query_id]["id"] == query_id
+        assert queries[query_id]["count"] == 10 # One "real" point + 9 patched ones
+        assert abs(queries[query_id]["result"] - 100.0) < 1.0 # One data point
+
+    finally:
+        client_server.terminate()
         api_server.terminate()
