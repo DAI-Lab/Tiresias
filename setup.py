@@ -37,5 +37,5 @@ setup(
     install_requires=install_requires,
     dependency_links=dependency_links,
     author_email='kevz@mit.edu',
-    scripts=['scripts/tiresias-client', 'scripts/tiresias-server', 'scripts/tiresias-worker']
+    scripts=['scripts/tiresias-client', 'scripts/tiresias-server']
 )

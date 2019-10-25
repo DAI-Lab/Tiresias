@@ -1,12 +1,3 @@
-Project Tiresias
-===============================
-
-version number: 0.0.1
-author: Kevin Alex Zhang
-
-Overview
---------
-
 The `Tiresias` platform is a differentially private data marketplace which helps connect users and 
 researchers, enabling them to collaboratively assemble diverse datasets and develop novel machine 
 learning methods and applications.
