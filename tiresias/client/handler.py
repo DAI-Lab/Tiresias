@@ -1,3 +1,4 @@
+from tiresias.core import b64_encode, b64_decode
 from tiresias.client.storage import execute_sql
 from tiresias.core.federated_learning import gradients
 from tiresias.core.mechanisms import finite_categorical, bounded_continuous
@@ -88,17 +89,17 @@ def handle_fl(query, data):
     """
     {
         "type": "federated_learning",
-        "epsilon": 1.0,
-        "featurizer": "<SQL>",
+        "epsilon": 10.0,
+        "featurizer": "SELECT x1, x2, y FROM example_app.tableA",
         "aggregator": {
-            "model": "MultilayerPerceptron",
-            "inputs": ["<var_name>", "<var_name>"],
-            "outputs": ["<var_name>"],
-        },
-        "weights": "<binary_blob>"
+            "lr": 1e-4,
+            "model": "Linear",
+            "inputs": ["x1", "x2"],
+            "outputs": ["y"],
+            "loss": "MSE"
+        }
     }
     """
     assert type(data) == list, "Featurizers should return rows."
-    assert len(data) == 1, "Featurizers for basic queries should return a single row."
     assert type(data[0]) == dict, "Featurizers should return rows of dictionaries."
-    return gradients(query["aggregator"], query["weights"], data[0])
+    return b64_encode(gradients(query["aggregator"], b64_decode(query["weights"]), data, query["epsilon"]))

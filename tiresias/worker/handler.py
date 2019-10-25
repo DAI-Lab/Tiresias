@@ -1,3 +1,4 @@
+from tiresias.core import b64_encode, b64_decode
 import tiresias.core.mechanisms as dp
 import tiresias.core.machine_learning as ml
 import tiresias.core.federated_learning as fl
@@ -29,4 +30,5 @@ def handle_ml(query, data):
     return ml.compute(query["aggregator"], data)
 
 def handle_fl(query, data):
-    return fl.aggregate(query["aggregator"], data)
+    model = fl.aggregate(query["aggregator"], b64_decode(query["weights"]), [b64_decode(d) for d in data])
+    return b64_encode(model)
