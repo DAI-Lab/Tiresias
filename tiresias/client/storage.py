@@ -1,8 +1,5 @@
 import os
 import sqlite3
-import requests
-from bottle import Bottle, request, response
-from json import loads, dumps
 
 def dict_factory(cursor, row):
     """
@@ -178,6 +175,7 @@ def insert_payload(data_dir, app_name, payload):
         }]
     }
     """
+    assert os.path.exists(os.path.join(data_dir, "%s.db" % app_name)), "App not found."
     connection = sqlite3.connect(os.path.join(data_dir, "%s.db" % app_name))
     cursor = connection.cursor()
 
@@ -196,50 +194,3 @@ def insert_payload(data_dir, app_name, payload):
         connection.commit()
     finally:
         connection.close()
-
-def run(data_dir="/tmp/tiresias", port=8000):
-    api = Bottle()
-    initialize(data_dir)
-    api.config['data_dir'] = data_dir
-
-    @api.route("/")
-    def index():
-        """
-        This REST endpoint returns a JSON array containing a list of the columns stored on the device.
-        """
-        rows = app_columns(api.config['data_dir'])
-        response.content_type = "application/json"
-        return dumps(rows, indent=2)
-
-    @api.route("/query")
-    def query():
-        """
-        This REST endpoint accepts a `sql` parameter which contains the SQL query. It attaches all the
-        application databases to the primary metadata database and executes the query. Note that this 
-        endpoint does not perform any security checks.
-        """
-        rows = execute_sql(api.config['data_dir'], request.params.get("sql"))
-        response.content_type = "application/json"
-        return dumps(rows, indent=2)
-
-    @api.route("/app/<app_name>/register")
-    def register(app_name):
-        """
-        This REST endpoint allows a new application to register by providing their database schema. The
-        `schema` parameter is a JSON object.
-        """
-        schema = loads(request.params.get("schema"))
-        register_app(api.config['data_dir'], app_name, schema)
-        return ""
-
-    @api.route("/app/<app_name>/insert")
-    def insert(app_name):
-        """
-        This REST endpoint allows an application to append rows to their database by submitting a JSON 
-        object in the `payload` field.
-        """
-        payload = loads(request.params.get("payload"))
-        insert_payload(api.config['data_dir'], app_name, payload)
-        return ""
-
-    api.run(host="localhost", port=port)

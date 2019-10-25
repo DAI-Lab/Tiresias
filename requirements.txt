@@ -3,8 +3,7 @@ bottle==0.12.17
 requests==2.21.0
 
 # Dev/Deployment
-sphinx
-sphinx_rtd_theme
 nose
 coverage
 pypi-publisher
+pdoc3
