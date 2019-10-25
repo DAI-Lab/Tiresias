@@ -5,7 +5,8 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, minimum-scale=1" />
 <meta name="generator" content="pdoc 0.7.1" />
 <title>tiresias.client.storage API documentation</title>
-<meta name="description" content="" />
+<meta name="description" content="This module provides functions for storing and retrieving data from a the
+underlying SQLite databases." />
 <link href='https://cdnjs.cloudflare.com/ajax/libs/normalize/8.0.0/normalize.min.css' rel='stylesheet'>
 <link href='https://cdnjs.cloudflare.com/ajax/libs/10up-sanitize.css/8.0.0/sanitize.min.css' rel='stylesheet'>
 <link href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/9.12.0/styles/github.min.css" rel="stylesheet">
@@ -20,11 +21,17 @@
 <h1 class="title">Module <code>tiresias.client.storage</code></h1>
 </header>
 <section id="section-intro">
+<p>This module provides functions for storing and retrieving data from a the
+underlying SQLite databases.</p>
 <details class="source">
 <summary>
 <span>Expand source code</span>
 </summary>
-<pre><code class="python">import os
+<pre><code class="python">&#34;&#34;&#34;
+This module provides functions for storing and retrieving data from a the 
+underlying SQLite databases.
+&#34;&#34;&#34;
+import os
 import sqlite3
 
 def dict_factory(cursor, row):
@@ -122,6 +129,7 @@ def register_app(data_dir, app_name, schema):
     appropriate tables in the database. For example, a schema which defines two tables containing 
     one and two columns, respectively, is shown here:
 
+    ```
     schema = {
         &#34;tableX&#34;: {
             &#34;description&#34;: &#34;This table contains X.&#34;,
@@ -146,6 +154,7 @@ def register_app(data_dir, app_name, schema):
             }
         }
     }
+    ```
     &#34;&#34;&#34;
     # Validate the schema
     validate_schema(schema)
@@ -191,7 +200,8 @@ def insert_payload(data_dir, app_name, payload):
     The entire payload is considered a single transaction; for example, an update which inserts two 
     rows into `tableX` and one row into `tableY` is shown below:
 
-    update = {
+    ```
+    payload = {
         &#34;tableX&#34;: [
             {&#34;column1&#34;: 0.0},
             {&#34;column1&#34;: 0.0},
@@ -200,6 +210,7 @@ def insert_payload(data_dir, app_name, payload):
             {&#34;column1&#34;: 0.0, &#34;column2&#34;: &#34;hello&#34;}
         }]
     }
+    ```
     &#34;&#34;&#34;
     assert os.path.exists(os.path.join(data_dir, &#34;%s.db&#34; % app_name)), &#34;App not found.&#34;
     connection = sqlite3.connect(os.path.join(data_dir, &#34;%s.db&#34; % app_name))
@@ -352,15 +363,16 @@ metadata database.</p></section>
 <dd>
 <section class="desc"><p>The entire payload is considered a single transaction; for example, an update which inserts two
 rows into <code>tableX</code> and one row into <code>tableY</code> is shown below:</p>
-<p>update = {
-"tableX": [
-{"column1": 0.0},
-{"column1": 0.0},
-],
-"tableY": [{
-{"column1": 0.0, "column2": "hello"}
-}]
-}</p></section>
+<pre><code>payload = {
+    &quot;tableX&quot;: [
+        {&quot;column1&quot;: 0.0},
+        {&quot;column1&quot;: 0.0},
+    ],
+    &quot;tableY&quot;: [{
+        {&quot;column1&quot;: 0.0, &quot;column2&quot;: &quot;hello&quot;}
+    }]
+}
+</code></pre></section>
 <details class="source">
 <summary>
 <span>Expand source code</span>
@@ -370,7 +382,8 @@ rows into <code>tableX</code> and one row into <code>tableY</code> is shown belo
     The entire payload is considered a single transaction; for example, an update which inserts two 
     rows into `tableX` and one row into `tableY` is shown below:
 
-    update = {
+    ```
+    payload = {
         &#34;tableX&#34;: [
             {&#34;column1&#34;: 0.0},
             {&#34;column1&#34;: 0.0},
@@ -379,6 +392,7 @@ rows into <code>tableX</code> and one row into <code>tableY</code> is shown belo
             {&#34;column1&#34;: 0.0, &#34;column2&#34;: &#34;hello&#34;}
         }]
     }
+    ```
     &#34;&#34;&#34;
     assert os.path.exists(os.path.join(data_dir, &#34;%s.db&#34; % app_name)), &#34;App not found.&#34;
     connection = sqlite3.connect(os.path.join(data_dir, &#34;%s.db&#34; % app_name))
@@ -408,30 +422,31 @@ rows into <code>tableX</code> and one row into <code>tableY</code> is shown belo
 <section class="desc"><p>Register an application, which is defined by an app_name and a schema, and create the
 appropriate tables in the database. For example, a schema which defines two tables containing
 one and two columns, respectively, is shown here:</p>
-<p>schema = {
-"tableX": {
-"description": "This table contains X.",
-"columns": {
-"column1": {
-"type": "float",
-"description: "This column contains 1."
+<pre><code>schema = {
+    &quot;tableX&quot;: {
+        &quot;description&quot;: &quot;This table contains X.&quot;,
+        &quot;columns&quot;: {
+            &quot;column1&quot;: {
+                &quot;type&quot;: &quot;float&quot;,
+                &quot;description: &quot;This column contains 1.&quot;
+            }
+        }
+    },
+    &quot;tableY&quot;: {
+        &quot;description&quot;: &quot;This table contains Y.&quot;,
+        &quot;columns&quot;: {
+            &quot;column1&quot;: {
+                &quot;type&quot;: &quot;float&quot;,
+                &quot;description: &quot;This column contains 1.&quot;
+            },
+            &quot;column2&quot;: {
+                &quot;type&quot;: &quot;string&quot;,
+                &quot;description: &quot;This column contains 2.&quot;
+            }
+        }
+    }
 }
-}
-},
-"tableY": {
-"description": "This table contains Y.",
-"columns": {
-"column1": {
-"type": "float",
-"description: "This column contains 1."
-},
-"column2": {
-"type": "string",
-"description: "This column contains 2."
-}
-}
-}
-}</p></section>
+</code></pre></section>
 <details class="source">
 <summary>
 <span>Expand source code</span>
@@ -442,6 +457,7 @@ one and two columns, respectively, is shown here:</p>
     appropriate tables in the database. For example, a schema which defines two tables containing 
     one and two columns, respectively, is shown here:
 
+    ```
     schema = {
         &#34;tableX&#34;: {
             &#34;description&#34;: &#34;This table contains X.&#34;,
@@ -466,6 +482,7 @@ one and two columns, respectively, is shown here:</p>
             }
         }
     }
+    ```
     &#34;&#34;&#34;
     # Validate the schema
     validate_schema(schema)

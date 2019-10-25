@@ -1,3 +1,9 @@
+"""
+The `tiresias.core.federated_learning` module provides functions to help 
+implement differentially private federated learning in PyTorch. It provides
+methods for estimating differentially private gradients and using 
+aggregated estimates of the gradients to train a PyTorch model.
+"""
 # pylint: disable=no-member
 # pylint: disable=not-callable
 import torch

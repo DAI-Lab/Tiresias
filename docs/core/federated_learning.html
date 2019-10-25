@@ -5,7 +5,9 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, minimum-scale=1" />
 <meta name="generator" content="pdoc 0.7.1" />
 <title>tiresias.core.federated_learning API documentation</title>
-<meta name="description" content="" />
+<meta name="description" content="The `tiresias.core.federated_learning` module provides functions to help
+implement differentially private federated learning in PyTorch. It provides
+…" />
 <link href='https://cdnjs.cloudflare.com/ajax/libs/normalize/8.0.0/normalize.min.css' rel='stylesheet'>
 <link href='https://cdnjs.cloudflare.com/ajax/libs/10up-sanitize.css/8.0.0/sanitize.min.css' rel='stylesheet'>
 <link href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/9.12.0/styles/github.min.css" rel="stylesheet">
@@ -20,11 +22,21 @@
 <h1 class="title">Module <code>tiresias.core.federated_learning</code></h1>
 </header>
 <section id="section-intro">
+<p>The <a title="tiresias.core.federated_learning" href="#tiresias.core.federated_learning"><code>tiresias.core.federated_learning</code></a> module provides functions to help
+implement differentially private federated learning in PyTorch. It provides
+methods for estimating differentially private gradients and using
+aggregated estimates of the gradients to train a PyTorch model.</p>
 <details class="source">
 <summary>
 <span>Expand source code</span>
 </summary>
-<pre><code class="python"># pylint: disable=no-member
+<pre><code class="python">&#34;&#34;&#34;
+The `tiresias.core.federated_learning` module provides functions to help 
+implement differentially private federated learning in PyTorch. It provides
+methods for estimating differentially private gradients and using 
+aggregated estimates of the gradients to train a PyTorch model.
+&#34;&#34;&#34;
+# pylint: disable=no-member
 # pylint: disable=not-callable
 import torch
 import numpy as np

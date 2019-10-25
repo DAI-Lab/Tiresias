@@ -5,7 +5,8 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, minimum-scale=1" />
 <meta name="generator" content="pdoc 0.7.1" />
 <title>tiresias.server API documentation</title>
-<meta name="description" content="" />
+<meta name="description" content="The `tiresias.server` module is responsible for providing a lightweight REST
+API for creating queries and submitting data to queries. In addition, the …" />
 <link href='https://cdnjs.cloudflare.com/ajax/libs/normalize/8.0.0/normalize.min.css' rel='stylesheet'>
 <link href='https://cdnjs.cloudflare.com/ajax/libs/10up-sanitize.css/8.0.0/sanitize.min.css' rel='stylesheet'>
 <link href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/9.12.0/styles/github.min.css" rel="stylesheet">
@@ -20,11 +21,23 @@
 <h1 class="title">Module <code>tiresias.server</code></h1>
 </header>
 <section id="section-intro">
+<p>The <a title="tiresias.server" href="#tiresias.server"><code>tiresias.server</code></a> module is responsible for providing a lightweight REST
+API for creating queries and submitting data to queries. In addition, the
+server module also launches a <a title="tiresias.worker" href="../worker/index.html"><code>tiresias.worker</code></a> thread which is responsible
+for performing the differential privacy computations needed to produce the
+final result for a given query.</p>
 <details class="source">
 <summary>
 <span>Expand source code</span>
 </summary>
-<pre><code class="python"># pylint: disable=no-member
+<pre><code class="python">&#34;&#34;&#34;
+The `tiresias.server` module is responsible for providing a lightweight REST
+API for creating queries and submitting data to queries. In addition, the 
+server module also launches a `tiresias.worker` thread which is responsible 
+for performing the differential privacy computations needed to produce the
+final result for a given query.
+&#34;&#34;&#34;
+# pylint: disable=no-member
 import uuid
 import threading
 import numpy as np
@@ -33,6 +46,11 @@ from time import sleep
 from json import loads, dumps
 
 def run(port=3000):
+    &#34;&#34;&#34;
+    This function launches a lightweight REST API for managing queries. In 
+    addition, it spawns a single background `tiresias.worker` thread which 
+    handles all incoming queries.
+    &#34;&#34;&#34;
     from bottle import Bottle, request, response
 
     api = Bottle()
@@ -84,7 +102,7 @@ def run(port=3000):
 <dl>
 <dt><code class="name"><a title="tiresias.server.api" href="api.html">tiresias.server.api</a></code></dt>
 <dd>
-<section class="desc"></section>
+<section class="desc"><p>This module provides helper functions for calling the REST API.</p></section>
 </dd>
 </dl>
 </section>
@@ -97,12 +115,19 @@ def run(port=3000):
 <span>def <span class="ident">run</span></span>(<span>port=3000)</span>
 </code></dt>
 <dd>
-<section class="desc"></section>
+<section class="desc"><p>This function launches a lightweight REST API for managing queries. In
+addition, it spawns a single background <a title="tiresias.worker" href="../worker/index.html"><code>tiresias.worker</code></a> thread which
+handles all incoming queries.</p></section>
 <details class="source">
 <summary>
 <span>Expand source code</span>
 </summary>
 <pre><code class="python">def run(port=3000):
+    &#34;&#34;&#34;
+    This function launches a lightweight REST API for managing queries. In 
+    addition, it spawns a single background `tiresias.worker` thread which 
+    handles all incoming queries.
+    &#34;&#34;&#34;
     from bottle import Bottle, request, response
 
     api = Bottle()

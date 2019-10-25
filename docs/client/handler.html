@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, minimum-scale=1" />
 <meta name="generator" content="pdoc 0.7.1" />
 <title>tiresias.client.handler API documentation</title>
-<meta name="description" content="" />
+<meta name="description" content="This module provides functions for handling different types of queries." />
 <link href='https://cdnjs.cloudflare.com/ajax/libs/normalize/8.0.0/normalize.min.css' rel='stylesheet'>
 <link href='https://cdnjs.cloudflare.com/ajax/libs/10up-sanitize.css/8.0.0/sanitize.min.css' rel='stylesheet'>
 <link href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/9.12.0/styles/github.min.css" rel="stylesheet">
@@ -20,16 +20,25 @@
 <h1 class="title">Module <code>tiresias.client.handler</code></h1>
 </header>
 <section id="section-intro">
+<p>This module provides functions for handling different types of queries.</p>
 <details class="source">
 <summary>
 <span>Expand source code</span>
 </summary>
-<pre><code class="python">from tiresias.core import b64_encode, b64_decode
+<pre><code class="python">&#34;&#34;&#34;
+This module provides functions for handling different types of queries.
+&#34;&#34;&#34;
+from tiresias.core import b64_encode, b64_decode
 from tiresias.client.storage import execute_sql
 from tiresias.core.federated_learning import gradients
 from tiresias.core.mechanisms import finite_categorical, bounded_continuous
 
 def handle(query, data_dir):
+    &#34;&#34;&#34;
+    This function takes a generic query and dispatches it to the correct query
+    handler. It&#39;s also responsbile for extracting the correct features from the 
+    given data directory.
+    &#34;&#34;&#34;
     dispatcher = {
         &#34;basic&#34;: handle_basic,
         &#34;bounded&#34;: handle_bounded,
@@ -42,12 +51,21 @@ def handle(query, data_dir):
 
 def handle_basic(query, data):
     &#34;&#34;&#34;
+    This function handles &#34;basic&#34; queries. The `featurizer` is expected to 
+    return a single scalar value which is not differentially private. On the 
+    server side, these scalar values will be aggregated using the provided
+    aggregation function to produce a differentially private summary statistic.
+    
+    An example of a basic query is:
+
+    ```
     {
         &#34;type&#34;: &#34;basic&#34;,
         &#34;epsilon&#34;: 1.0,
-        &#34;featurizer&#34;: &#34;&lt;SQL&gt;&#34;,
+        &#34;featurizer&#34;: &#34;SELECT age FROM user.profile&#34;,
         &#34;aggregator&#34;: &#34;mean&#34;
     }
+    ```
     &#34;&#34;&#34;
     assert type(data) == list, &#34;Featurizers should return rows.&#34;
     assert len(data) == 1, &#34;Featurizers for basic queries should return a single row.&#34;
@@ -59,15 +77,29 @@ def handle_basic(query, data):
 
 def handle_bounded(query, data):
     &#34;&#34;&#34;
+    This function handles &#34;bounded&#34; queries. The `featurizer` is expected to 
+    return a dictionary of key-value pairs where the values are bounded. The
+    bounds for each variable must be specified as either a set of discrete 
+    values or a range of real values.
+
+    Local differential privacy mechanisms are used to anonymize this set of
+    values before they are transmitted. An example of a bounded query is:
+
+    ```
     {
         &#34;type&#34;: &#34;bounded&#34;,
         &#34;epsilon&#34;: 1.0,
-        &#34;featurizer&#34;: &#34;&lt;SQL&gt;&#34;,
+        &#34;featurizer&#34;: &#34;SELECT species, weight FROM user.pets&#34;,
         &#34;bounds&#34;: {
-            &#34;&lt;var_name_1&gt;&#34;: {&#34;type&#34;: &#34;set&#34;, &#34;values&#34;: [1, 2, 3], &#34;default&#34;: 0},
-            &#34;&lt;var_name_2&gt;&#34;: {&#34;type&#34;: &#34;range&#34;, &#34;low&#34;: 0.0, &#34;high&#34;: 1.0},
+            &#34;species&#34;: {
+                &#34;type&#34;: &#34;set&#34;, 
+                &#34;default&#34;: &#34;dog&#34;,
+                &#34;values&#34;: [&#34;cat&#34;, &#34;dog&#34;], 
+            },
+            &#34;weight&#34;: {&#34;type&#34;: &#34;range&#34;, &#34;low&#34;: 0.0, &#34;high&#34;: 100.0},
         }
     }
+    ```
     &#34;&#34;&#34;
     assert type(data) == list, &#34;Featurizers should return rows.&#34;
     assert len(data) == 1, &#34;Featurizers for basic queries should return a single row.&#34;
@@ -95,6 +127,14 @@ def handle_bounded(query, data):
 
 def handle_ml(query, data):
     &#34;&#34;&#34;
+    This function handles &#34;machine learning&#34; queries. The `featurizer` is 
+    expected to return a dictionary of key-value pairs where the values are 
+    scalars. In addition, the `aggregator` must correspond to a differentially
+    private machine learning technique which is implemented under 
+    `tiresias.core.machine_learning`.
+
+    An example of a machine learning query is:
+    ```
     {
         &#34;type&#34;: &#34;machine_learning&#34;,
         &#34;epsilon&#34;: 1.0,
@@ -105,6 +145,7 @@ def handle_ml(query, data):
             &#34;outputs&#34;: [&#34;&lt;var_name&gt;&#34;&#34;],
         }
     }
+    ```
     &#34;&#34;&#34;
     assert type(data) == list, &#34;Featurizers should return rows.&#34;
     assert len(data) == 1, &#34;Featurizers for basic queries should return a single row.&#34;
@@ -113,6 +154,16 @@ def handle_ml(query, data):
 
 def handle_fl(query, data):
     &#34;&#34;&#34;
+    This function handles &#34;federated learning&#34; queries. The `featurizer` is 
+    expected to return a list containing dictionaries of key-value pairs. The 
+    `aggregator` must be a valid specification of a gradient-based model as 
+    described in `tiresias.core.federated_learning`.
+
+    The gradients are computed on the client side using their data and only 
+    anonymized gradients are sent to the server. Each federated learning query
+    corresponds to a single epoch in the training process. An example of a 
+    federated learning query is:
+    ```
     {
         &#34;type&#34;: &#34;federated_learning&#34;,
         &#34;epsilon&#34;: 10.0,
@@ -125,6 +176,7 @@ def handle_fl(query, data):
             &#34;loss&#34;: &#34;MSE&#34;
         }
     }
+    ```
     &#34;&#34;&#34;
     assert type(data) == list, &#34;Featurizers should return rows.&#34;
     assert type(data[0]) == dict, &#34;Featurizers should return rows of dictionaries.&#34;
@@ -142,12 +194,19 @@ def handle_fl(query, data):
 <span>def <span class="ident">handle</span></span>(<span>query, data_dir)</span>
 </code></dt>
 <dd>
-<section class="desc"></section>
+<section class="desc"><p>This function takes a generic query and dispatches it to the correct query
+handler. It's also responsbile for extracting the correct features from the
+given data directory.</p></section>
 <details class="source">
 <summary>
 <span>Expand source code</span>
 </summary>
 <pre><code class="python">def handle(query, data_dir):
+    &#34;&#34;&#34;
+    This function takes a generic query and dispatches it to the correct query
+    handler. It&#39;s also responsbile for extracting the correct features from the 
+    given data directory.
+    &#34;&#34;&#34;
     dispatcher = {
         &#34;basic&#34;: handle_basic,
         &#34;bounded&#34;: handle_bounded,
@@ -163,24 +222,39 @@ def handle_fl(query, data):
 <span>def <span class="ident">handle_basic</span></span>(<span>query, data)</span>
 </code></dt>
 <dd>
-<section class="desc"><p>{
-"type": "basic",
-"epsilon": 1.0,
-"featurizer": "<SQL>",
-"aggregator": "mean"
-}</p></section>
+<section class="desc"><p>This function handles "basic" queries. The <code>featurizer</code> is expected to
+return a single scalar value which is not differentially private. On the
+server side, these scalar values will be aggregated using the provided
+aggregation function to produce a differentially private summary statistic.</p>
+<p>An example of a basic query is:</p>
+<pre><code>{
+    &quot;type&quot;: &quot;basic&quot;,
+    &quot;epsilon&quot;: 1.0,
+    &quot;featurizer&quot;: &quot;SELECT age FROM user.profile&quot;,
+    &quot;aggregator&quot;: &quot;mean&quot;
+}
+</code></pre></section>
 <details class="source">
 <summary>
 <span>Expand source code</span>
 </summary>
 <pre><code class="python">def handle_basic(query, data):
     &#34;&#34;&#34;
+    This function handles &#34;basic&#34; queries. The `featurizer` is expected to 
+    return a single scalar value which is not differentially private. On the 
+    server side, these scalar values will be aggregated using the provided
+    aggregation function to produce a differentially private summary statistic.
+    
+    An example of a basic query is:
+
+    ```
     {
         &#34;type&#34;: &#34;basic&#34;,
         &#34;epsilon&#34;: 1.0,
-        &#34;featurizer&#34;: &#34;&lt;SQL&gt;&#34;,
+        &#34;featurizer&#34;: &#34;SELECT age FROM user.profile&#34;,
         &#34;aggregator&#34;: &#34;mean&#34;
     }
+    ```
     &#34;&#34;&#34;
     assert type(data) == list, &#34;Featurizers should return rows.&#34;
     assert len(data) == 1, &#34;Featurizers for basic queries should return a single row.&#34;
@@ -195,30 +269,55 @@ def handle_fl(query, data):
 <span>def <span class="ident">handle_bounded</span></span>(<span>query, data)</span>
 </code></dt>
 <dd>
-<section class="desc"><p>{
-"type": "bounded",
-"epsilon": 1.0,
-"featurizer": "<SQL>",
-"bounds": {
-"<var_name_1>": {"type": "set", "values": [1, 2, 3], "default": 0},
-"<var_name_2>": {"type": "range", "low": 0.0, "high": 1.0},
+<section class="desc"><p>This function handles "bounded" queries. The <code>featurizer</code> is expected to
+return a dictionary of key-value pairs where the values are bounded. The
+bounds for each variable must be specified as either a set of discrete
+values or a range of real values.</p>
+<p>Local differential privacy mechanisms are used to anonymize this set of
+values before they are transmitted. An example of a bounded query is:</p>
+<pre><code>{
+    &quot;type&quot;: &quot;bounded&quot;,
+    &quot;epsilon&quot;: 1.0,
+    &quot;featurizer&quot;: &quot;SELECT species, weight FROM user.pets&quot;,
+    &quot;bounds&quot;: {
+        &quot;species&quot;: {
+            &quot;type&quot;: &quot;set&quot;, 
+            &quot;default&quot;: &quot;dog&quot;,
+            &quot;values&quot;: [&quot;cat&quot;, &quot;dog&quot;], 
+        },
+        &quot;weight&quot;: {&quot;type&quot;: &quot;range&quot;, &quot;low&quot;: 0.0, &quot;high&quot;: 100.0},
+    }
 }
-}</p></section>
+</code></pre></section>
 <details class="source">
 <summary>
 <span>Expand source code</span>
 </summary>
 <pre><code class="python">def handle_bounded(query, data):
     &#34;&#34;&#34;
+    This function handles &#34;bounded&#34; queries. The `featurizer` is expected to 
+    return a dictionary of key-value pairs where the values are bounded. The
+    bounds for each variable must be specified as either a set of discrete 
+    values or a range of real values.
+
+    Local differential privacy mechanisms are used to anonymize this set of
+    values before they are transmitted. An example of a bounded query is:
+
+    ```
     {
         &#34;type&#34;: &#34;bounded&#34;,
         &#34;epsilon&#34;: 1.0,
-        &#34;featurizer&#34;: &#34;&lt;SQL&gt;&#34;,
+        &#34;featurizer&#34;: &#34;SELECT species, weight FROM user.pets&#34;,
         &#34;bounds&#34;: {
-            &#34;&lt;var_name_1&gt;&#34;: {&#34;type&#34;: &#34;set&#34;, &#34;values&#34;: [1, 2, 3], &#34;default&#34;: 0},
-            &#34;&lt;var_name_2&gt;&#34;: {&#34;type&#34;: &#34;range&#34;, &#34;low&#34;: 0.0, &#34;high&#34;: 1.0},
+            &#34;species&#34;: {
+                &#34;type&#34;: &#34;set&#34;, 
+                &#34;default&#34;: &#34;dog&#34;,
+                &#34;values&#34;: [&#34;cat&#34;, &#34;dog&#34;], 
+            },
+            &#34;weight&#34;: {&#34;type&#34;: &#34;range&#34;, &#34;low&#34;: 0.0, &#34;high&#34;: 100.0},
         }
     }
+    ```
     &#34;&#34;&#34;
     assert type(data) == list, &#34;Featurizers should return rows.&#34;
     assert len(data) == 1, &#34;Featurizers for basic queries should return a single row.&#34;
@@ -249,24 +348,43 @@ def handle_fl(query, data):
 <span>def <span class="ident">handle_fl</span></span>(<span>query, data)</span>
 </code></dt>
 <dd>
-<section class="desc"><p>{
-"type": "federated_learning",
-"epsilon": 10.0,
-"featurizer": "SELECT x1, x2, y FROM example_app.tableA",
-"aggregator": {
-"lr": 1e-4,
-"model": "Linear",
-"inputs": ["x1", "x2"],
-"outputs": ["y"],
-"loss": "MSE"
+<section class="desc"><p>This function handles "federated learning" queries. The <code>featurizer</code> is
+expected to return a list containing dictionaries of key-value pairs. The
+<code>aggregator</code> must be a valid specification of a gradient-based model as
+described in <a title="tiresias.core.federated_learning" href="../core/federated_learning.html"><code>tiresias.core.federated_learning</code></a>.</p>
+<p>The gradients are computed on the client side using their data and only
+anonymized gradients are sent to the server. Each federated learning query
+corresponds to a single epoch in the training process. An example of a
+federated learning query is:</p>
+<pre><code>{
+    &quot;type&quot;: &quot;federated_learning&quot;,
+    &quot;epsilon&quot;: 10.0,
+    &quot;featurizer&quot;: &quot;SELECT x1, x2, y FROM example_app.tableA&quot;,
+    &quot;aggregator&quot;: {
+        &quot;lr&quot;: 1e-4,
+        &quot;model&quot;: &quot;Linear&quot;,
+        &quot;inputs&quot;: [&quot;x1&quot;, &quot;x2&quot;],
+        &quot;outputs&quot;: [&quot;y&quot;],
+        &quot;loss&quot;: &quot;MSE&quot;
+    }
 }
-}</p></section>
+</code></pre></section>
 <details class="source">
 <summary>
 <span>Expand source code</span>
 </summary>
 <pre><code class="python">def handle_fl(query, data):
     &#34;&#34;&#34;
+    This function handles &#34;federated learning&#34; queries. The `featurizer` is 
+    expected to return a list containing dictionaries of key-value pairs. The 
+    `aggregator` must be a valid specification of a gradient-based model as 
+    described in `tiresias.core.federated_learning`.
+
+    The gradients are computed on the client side using their data and only 
+    anonymized gradients are sent to the server. Each federated learning query
+    corresponds to a single epoch in the training process. An example of a 
+    federated learning query is:
+    ```
     {
         &#34;type&#34;: &#34;federated_learning&#34;,
         &#34;epsilon&#34;: 10.0,
@@ -279,6 +397,7 @@ def handle_fl(query, data):
             &#34;loss&#34;: &#34;MSE&#34;
         }
     }
+    ```
     &#34;&#34;&#34;
     assert type(data) == list, &#34;Featurizers should return rows.&#34;
     assert type(data[0]) == dict, &#34;Featurizers should return rows of dictionaries.&#34;
@@ -289,22 +408,37 @@ def handle_fl(query, data):
 <span>def <span class="ident">handle_ml</span></span>(<span>query, data)</span>
 </code></dt>
 <dd>
-<section class="desc"><p>{
-"type": "machine_learning",
-"epsilon": 1.0,
-"featurizer": "<SQL>",
-"aggregator": {
-"model": "LogisticRegression",
-"inputs": ["<var_name>", "<var_name>"],
-"outputs": ["<var_name>""],
+<section class="desc"><p>This function handles "machine learning" queries. The <code>featurizer</code> is
+expected to return a dictionary of key-value pairs where the values are
+scalars. In addition, the <code>aggregator</code> must correspond to a differentially
+private machine learning technique which is implemented under
+<a title="tiresias.core.machine_learning" href="../core/machine_learning.html"><code>tiresias.core.machine_learning</code></a>.</p>
+<p>An example of a machine learning query is:</p>
+<pre><code>{
+    &quot;type&quot;: &quot;machine_learning&quot;,
+    &quot;epsilon&quot;: 1.0,
+    &quot;featurizer&quot;: &quot;&lt;SQL&gt;&quot;,
+    &quot;aggregator&quot;: {
+        &quot;model&quot;: &quot;LogisticRegression&quot;,
+        &quot;inputs&quot;: [&quot;&lt;var_name&gt;&quot;, &quot;&lt;var_name&gt;&quot;],
+        &quot;outputs&quot;: [&quot;&lt;var_name&gt;&quot;&quot;],
+    }
 }
-}</p></section>
+</code></pre></section>
 <details class="source">
 <summary>
 <span>Expand source code</span>
 </summary>
 <pre><code class="python">def handle_ml(query, data):
     &#34;&#34;&#34;
+    This function handles &#34;machine learning&#34; queries. The `featurizer` is 
+    expected to return a dictionary of key-value pairs where the values are 
+    scalars. In addition, the `aggregator` must correspond to a differentially
+    private machine learning technique which is implemented under 
+    `tiresias.core.machine_learning`.
+
+    An example of a machine learning query is:
+    ```
     {
         &#34;type&#34;: &#34;machine_learning&#34;,
         &#34;epsilon&#34;: 1.0,
@@ -315,6 +449,7 @@ def handle_fl(query, data):
             &#34;outputs&#34;: [&#34;&lt;var_name&gt;&#34;&#34;],
         }
     }
+    ```
     &#34;&#34;&#34;
     assert type(data) == list, &#34;Featurizers should return rows.&#34;
     assert len(data) == 1, &#34;Featurizers for basic queries should return a single row.&#34;

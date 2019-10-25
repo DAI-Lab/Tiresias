@@ -1,3 +1,8 @@
+"""
+The `tiresias.core.mechanisms` module provides low-level implementations of 
+differential privacy mechanisms such as the Laplace mechanism, 
+sample-and-aggregate, and the staircase mechanism.
+"""
 import numpy as np
 
 def laplace_noise(x, sensitivity, epsilon):

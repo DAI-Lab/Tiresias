@@ -1,3 +1,7 @@
+"""
+This module provides functions for storing and retrieving data from a the 
+underlying SQLite databases.
+"""
 import os
 import sqlite3
 
@@ -96,6 +100,7 @@ def register_app(data_dir, app_name, schema):
     appropriate tables in the database. For example, a schema which defines two tables containing 
     one and two columns, respectively, is shown here:
 
+    ```
     schema = {
         "tableX": {
             "description": "This table contains X.",
@@ -120,6 +125,7 @@ def register_app(data_dir, app_name, schema):
             }
         }
     }
+    ```
     """
     # Validate the schema
     validate_schema(schema)
@@ -165,7 +171,8 @@ def insert_payload(data_dir, app_name, payload):
     The entire payload is considered a single transaction; for example, an update which inserts two 
     rows into `tableX` and one row into `tableY` is shown below:
 
-    update = {
+    ```
+    payload = {
         "tableX": [
             {"column1": 0.0},
             {"column1": 0.0},
@@ -174,6 +181,7 @@ def insert_payload(data_dir, app_name, payload):
             {"column1": 0.0, "column2": "hello"}
         }]
     }
+    ```
     """
     assert os.path.exists(os.path.join(data_dir, "%s.db" % app_name)), "App not found."
     connection = sqlite3.connect(os.path.join(data_dir, "%s.db" % app_name))

@@ -1,3 +1,12 @@
+"""
+The `tiresias.client` module is responsible for (1) providing a local personal 
+data store and (2) performing computations necessary for differential privacy 
+upon request. At the top-level, this module provides functions for (1) running 
+a storage server which provides a REST API for applications to store data in
+the personal data store and (2) starting a thread which periodically looks for 
+queries that the user can contribute to and performs the computations that are
+needed to securely contribute to them.
+"""
 # pylint: disable=no-member
 import requests
 import threading
@@ -9,6 +18,10 @@ from tiresias.client.handler import handle
 from tiresias.client.storage import initialize, app_columns, execute_sql, register_app, insert_payload
 
 def run(server="http://localhost:3000", data_dir="/tmp/tiresias", port=8000):
+    """
+    This function launches the storage server and query handler on different 
+    threads and blocks forever.
+    """
     storage_thread = threading.Thread(target=storage_server, args=(data_dir, port))
     storage_thread.start()
 
@@ -19,6 +32,11 @@ def run(server="http://localhost:3000", data_dir="/tmp/tiresias", port=8000):
     query_thread.join()
 
 def storage_server(data_dir="/tmp/tiresias", port=8000):
+    """
+    This function launches the storage server. It stores the SQLite databases 
+    in the given data directory and listens on the given port. Helper functions
+    for interacting with this API are provided under `tiresias.client.api`.
+    """
     from bottle import Bottle, request, response
     
     api = Bottle()
@@ -68,6 +86,10 @@ def storage_server(data_dir="/tmp/tiresias", port=8000):
     api.run(host="localhost", port=port)
 
 def query_handler(server, data_dir):
+    """
+    This function launches the query handler. It repeatedly asks the server for
+    new queries to process and then processes them.
+    """
     handled = set()
     while True:
         try:

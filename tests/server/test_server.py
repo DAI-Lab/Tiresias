@@ -164,6 +164,11 @@ def test_server_client_with_values(tmpdir):
         assert queries[query_id]["count"] == 10 # One "real" point + 9 patched ones
         assert abs(queries[query_id]["result"] - 100.0) < 1.0 # One data point
 
+        # Check that the client responded to the query (direct)
+        query = server.api.fetch_query("http://localhost:3000/", query_id)
+        assert query["count"] == 10 # One "real" point + 9 patched ones
+        assert abs(query["result"] - 100.0) < 1.0 # One data point
+
     finally:
         client_server.terminate()
         api_server.terminate()

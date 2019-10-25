@@ -5,7 +5,9 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, minimum-scale=1" />
 <meta name="generator" content="pdoc 0.7.1" />
 <title>tiresias.core API documentation</title>
-<meta name="description" content="" />
+<meta name="description" content="The `tiresias.core` module is responsible for providing the underlying
+implementations of various differential privacy mechanisms and machine
+…" />
 <link href='https://cdnjs.cloudflare.com/ajax/libs/normalize/8.0.0/normalize.min.css' rel='stylesheet'>
 <link href='https://cdnjs.cloudflare.com/ajax/libs/10up-sanitize.css/8.0.0/sanitize.min.css' rel='stylesheet'>
 <link href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/9.12.0/styles/github.min.css" rel="stylesheet">
@@ -20,11 +22,19 @@
 <h1 class="title">Module <code>tiresias.core</code></h1>
 </header>
 <section id="section-intro">
+<p>The <a title="tiresias.core" href="#tiresias.core"><code>tiresias.core</code></a> module is responsible for providing the underlying
+implementations of various differential privacy mechanisms and machine
+learning models.</p>
 <details class="source">
 <summary>
 <span>Expand source code</span>
 </summary>
-<pre><code class="python">import pickle
+<pre><code class="python">&#34;&#34;&#34;
+The `tiresias.core` module is responsible for providing the underlying 
+implementations of various differential privacy mechanisms and machine
+learning models.
+&#34;&#34;&#34;
+import pickle
 import codecs
 
 def b64_encode(obj):
@@ -47,15 +57,20 @@ def b64_decode(obj):
 <dl>
 <dt><code class="name"><a title="tiresias.core.federated_learning" href="federated_learning.html">tiresias.core.federated_learning</a></code></dt>
 <dd>
-<section class="desc"></section>
+<section class="desc"><p>The <a title="tiresias.core.federated_learning" href="federated_learning.html"><code>tiresias.core.federated_learning</code></a> module provides functions to help
+implement differentially private federated learning in PyTorch. It provides
+…</p></section>
 </dd>
 <dt><code class="name"><a title="tiresias.core.machine_learning" href="machine_learning.html">tiresias.core.machine_learning</a></code></dt>
 <dd>
-<section class="desc"></section>
+<section class="desc"><p>The <a title="tiresias.core.machine_learning" href="machine_learning.html"><code>tiresias.core.machine_learning</code></a> module provides implementations of
+differentially private machine learning techniques.</p></section>
 </dd>
 <dt><code class="name"><a title="tiresias.core.mechanisms" href="mechanisms.html">tiresias.core.mechanisms</a></code></dt>
 <dd>
-<section class="desc"></section>
+<section class="desc"><p>The <a title="tiresias.core.mechanisms" href="mechanisms.html"><code>tiresias.core.mechanisms</code></a> module provides low-level implementations of
+differential privacy mechanisms such as the Laplace mechanism,
+…</p></section>
 </dd>
 </dl>
 </section>

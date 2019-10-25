@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, minimum-scale=1" />
 <meta name="generator" content="pdoc 0.7.1" />
 <title>tiresias.client.api API documentation</title>
-<meta name="description" content="" />
+<meta name="description" content="This module provides helper functions for calling the REST API." />
 <link href='https://cdnjs.cloudflare.com/ajax/libs/normalize/8.0.0/normalize.min.css' rel='stylesheet'>
 <link href='https://cdnjs.cloudflare.com/ajax/libs/10up-sanitize.css/8.0.0/sanitize.min.css' rel='stylesheet'>
 <link href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/9.12.0/styles/github.min.css" rel="stylesheet">
@@ -20,19 +20,33 @@
 <h1 class="title">Module <code>tiresias.client.api</code></h1>
 </header>
 <section id="section-intro">
+<p>This module provides helper functions for calling the REST API.</p>
 <details class="source">
 <summary>
 <span>Expand source code</span>
 </summary>
-<pre><code class="python">import requests
+<pre><code class="python">&#34;&#34;&#34;
+This module provides helper functions for calling the REST API.
+&#34;&#34;&#34;
+import requests
 from json import loads, dumps
 from .storage import validate_schema, validate_payload
 
 def register_app(port, app_name, schema):
+    &#34;&#34;&#34;
+    This helper function submits a GET request to register a new application 
+    with the storage server. See `tiresias.client.storage.register_app` for
+    the backend implementation.
+    &#34;&#34;&#34;
     validate_schema(schema)
     return requests.get(&#34;http://localhost:%s/app/example_app/register&#34; % port, params={&#34;schema&#34;: dumps(schema)})
 
 def insert_payload(port, app_name, payload):
+    &#34;&#34;&#34;
+    This helper function submits a GET request to insert data collected by an
+    existing application into the storage server. See 
+    `tiresias.client.storage.insert_payload` for the backend implementation.
+    &#34;&#34;&#34;
     validate_payload(payload)
     return requests.get(&#34;http://localhost:%s/app/example_app/insert&#34; % port, params={&#34;payload&#34;: dumps(payload)})</code></pre>
 </details>
@@ -48,12 +62,19 @@ def insert_payload(port, app_name, payload):
 <span>def <span class="ident">insert_payload</span></span>(<span>port, app_name, payload)</span>
 </code></dt>
 <dd>
-<section class="desc"></section>
+<section class="desc"><p>This helper function submits a GET request to insert data collected by an
+existing application into the storage server. See
+<a title="tiresias.client.storage.insert_payload" href="storage.html#tiresias.client.storage.insert_payload"><code>insert_payload()</code></a> for the backend implementation.</p></section>
 <details class="source">
 <summary>
 <span>Expand source code</span>
 </summary>
 <pre><code class="python">def insert_payload(port, app_name, payload):
+    &#34;&#34;&#34;
+    This helper function submits a GET request to insert data collected by an
+    existing application into the storage server. See 
+    `tiresias.client.storage.insert_payload` for the backend implementation.
+    &#34;&#34;&#34;
     validate_payload(payload)
     return requests.get(&#34;http://localhost:%s/app/example_app/insert&#34; % port, params={&#34;payload&#34;: dumps(payload)})</code></pre>
 </details>
@@ -62,12 +83,19 @@ def insert_payload(port, app_name, payload):
 <span>def <span class="ident">register_app</span></span>(<span>port, app_name, schema)</span>
 </code></dt>
 <dd>
-<section class="desc"></section>
+<section class="desc"><p>This helper function submits a GET request to register a new application
+with the storage server. See <a title="tiresias.client.storage.register_app" href="storage.html#tiresias.client.storage.register_app"><code>register_app()</code></a> for
+the backend implementation.</p></section>
 <details class="source">
 <summary>
 <span>Expand source code</span>
 </summary>
 <pre><code class="python">def register_app(port, app_name, schema):
+    &#34;&#34;&#34;
+    This helper function submits a GET request to register a new application 
+    with the storage server. See `tiresias.client.storage.register_app` for
+    the backend implementation.
+    &#34;&#34;&#34;
     validate_schema(schema)
     return requests.get(&#34;http://localhost:%s/app/example_app/register&#34; % port, params={&#34;schema&#34;: dumps(schema)})</code></pre>
 </details>

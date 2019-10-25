@@ -5,7 +5,8 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, minimum-scale=1" />
 <meta name="generator" content="pdoc 0.7.1" />
 <title>tiresias.client API documentation</title>
-<meta name="description" content="" />
+<meta name="description" content="The `tiresias.client` module is responsible for (1) providing a local personal
+data store and (2) performing computations necessary for differential …" />
 <link href='https://cdnjs.cloudflare.com/ajax/libs/normalize/8.0.0/normalize.min.css' rel='stylesheet'>
 <link href='https://cdnjs.cloudflare.com/ajax/libs/10up-sanitize.css/8.0.0/sanitize.min.css' rel='stylesheet'>
 <link href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/9.12.0/styles/github.min.css" rel="stylesheet">
@@ -20,11 +21,27 @@
 <h1 class="title">Module <code>tiresias.client</code></h1>
 </header>
 <section id="section-intro">
+<p>The <a title="tiresias.client" href="#tiresias.client"><code>tiresias.client</code></a> module is responsible for (1) providing a local personal
+data store and (2) performing computations necessary for differential privacy
+upon request. At the top-level, this module provides functions for (1) running
+a storage server which provides a REST API for applications to store data in
+the personal data store and (2) starting a thread which periodically looks for
+queries that the user can contribute to and performs the computations that are
+needed to securely contribute to them.</p>
 <details class="source">
 <summary>
 <span>Expand source code</span>
 </summary>
-<pre><code class="python"># pylint: disable=no-member
+<pre><code class="python">&#34;&#34;&#34;
+The `tiresias.client` module is responsible for (1) providing a local personal 
+data store and (2) performing computations necessary for differential privacy 
+upon request. At the top-level, this module provides functions for (1) running 
+a storage server which provides a REST API for applications to store data in
+the personal data store and (2) starting a thread which periodically looks for 
+queries that the user can contribute to and performs the computations that are
+needed to securely contribute to them.
+&#34;&#34;&#34;
+# pylint: disable=no-member
 import requests
 import threading
 import urllib.parse
@@ -35,6 +52,10 @@ from tiresias.client.handler import handle
 from tiresias.client.storage import initialize, app_columns, execute_sql, register_app, insert_payload
 
 def run(server=&#34;http://localhost:3000&#34;, data_dir=&#34;/tmp/tiresias&#34;, port=8000):
+    &#34;&#34;&#34;
+    This function launches the storage server and query handler on different 
+    threads and blocks forever.
+    &#34;&#34;&#34;
     storage_thread = threading.Thread(target=storage_server, args=(data_dir, port))
     storage_thread.start()
 
@@ -45,6 +66,11 @@ def run(server=&#34;http://localhost:3000&#34;, data_dir=&#34;/tmp/tiresias&#34;
     query_thread.join()
 
 def storage_server(data_dir=&#34;/tmp/tiresias&#34;, port=8000):
+    &#34;&#34;&#34;
+    This function launches the storage server. It stores the SQLite databases 
+    in the given data directory and listens on the given port. Helper functions
+    for interacting with this API are provided under `tiresias.client.api`.
+    &#34;&#34;&#34;
     from bottle import Bottle, request, response
     
     api = Bottle()
@@ -94,6 +120,10 @@ def storage_server(data_dir=&#34;/tmp/tiresias&#34;, port=8000):
     api.run(host=&#34;localhost&#34;, port=port)
 
 def query_handler(server, data_dir):
+    &#34;&#34;&#34;
+    This function launches the query handler. It repeatedly asks the server for
+    new queries to process and then processes them.
+    &#34;&#34;&#34;
     handled = set()
     while True:
         try:
@@ -113,15 +143,16 @@ def query_handler(server, data_dir):
 <dl>
 <dt><code class="name"><a title="tiresias.client.api" href="api.html">tiresias.client.api</a></code></dt>
 <dd>
-<section class="desc"></section>
+<section class="desc"><p>This module provides helper functions for calling the REST API.</p></section>
 </dd>
 <dt><code class="name"><a title="tiresias.client.handler" href="handler.html">tiresias.client.handler</a></code></dt>
 <dd>
-<section class="desc"></section>
+<section class="desc"><p>This module provides functions for handling different types of queries.</p></section>
 </dd>
 <dt><code class="name"><a title="tiresias.client.storage" href="storage.html">tiresias.client.storage</a></code></dt>
 <dd>
-<section class="desc"></section>
+<section class="desc"><p>This module provides functions for storing and retrieving data from a the
+underlying SQLite databases.</p></section>
 </dd>
 </dl>
 </section>
@@ -134,12 +165,17 @@ def query_handler(server, data_dir):
 <span>def <span class="ident">query_handler</span></span>(<span>server, data_dir)</span>
 </code></dt>
 <dd>
-<section class="desc"></section>
+<section class="desc"><p>This function launches the query handler. It repeatedly asks the server for
+new queries to process and then processes them.</p></section>
 <details class="source">
 <summary>
 <span>Expand source code</span>
 </summary>
 <pre><code class="python">def query_handler(server, data_dir):
+    &#34;&#34;&#34;
+    This function launches the query handler. It repeatedly asks the server for
+    new queries to process and then processes them.
+    &#34;&#34;&#34;
     handled = set()
     while True:
         try:
@@ -158,12 +194,17 @@ def query_handler(server, data_dir):
 <span>def <span class="ident">run</span></span>(<span>server='http://localhost:3000', data_dir='/tmp/tiresias', port=8000)</span>
 </code></dt>
 <dd>
-<section class="desc"></section>
+<section class="desc"><p>This function launches the storage server and query handler on different
+threads and blocks forever.</p></section>
 <details class="source">
 <summary>
 <span>Expand source code</span>
 </summary>
 <pre><code class="python">def run(server=&#34;http://localhost:3000&#34;, data_dir=&#34;/tmp/tiresias&#34;, port=8000):
+    &#34;&#34;&#34;
+    This function launches the storage server and query handler on different 
+    threads and blocks forever.
+    &#34;&#34;&#34;
     storage_thread = threading.Thread(target=storage_server, args=(data_dir, port))
     storage_thread.start()
 
@@ -178,12 +219,19 @@ def query_handler(server, data_dir):
 <span>def <span class="ident">storage_server</span></span>(<span>data_dir='/tmp/tiresias', port=8000)</span>
 </code></dt>
 <dd>
-<section class="desc"></section>
+<section class="desc"><p>This function launches the storage server. It stores the SQLite databases
+in the given data directory and listens on the given port. Helper functions
+for interacting with this API are provided under <a title="tiresias.client.api" href="api.html"><code>tiresias.client.api</code></a>.</p></section>
 <details class="source">
 <summary>
 <span>Expand source code</span>
 </summary>
 <pre><code class="python">def storage_server(data_dir=&#34;/tmp/tiresias&#34;, port=8000):
+    &#34;&#34;&#34;
+    This function launches the storage server. It stores the SQLite databases 
+    in the given data directory and listens on the given port. Helper functions
+    for interacting with this API are provided under `tiresias.client.api`.
+    &#34;&#34;&#34;
     from bottle import Bottle, request, response
     
     api = Bottle()

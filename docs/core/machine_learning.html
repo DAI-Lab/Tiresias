@@ -5,7 +5,8 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, minimum-scale=1" />
 <meta name="generator" content="pdoc 0.7.1" />
 <title>tiresias.core.machine_learning API documentation</title>
-<meta name="description" content="" />
+<meta name="description" content="The `tiresias.core.machine_learning` module provides implementations of
+differentially private machine learning techniques." />
 <link href='https://cdnjs.cloudflare.com/ajax/libs/normalize/8.0.0/normalize.min.css' rel='stylesheet'>
 <link href='https://cdnjs.cloudflare.com/ajax/libs/10up-sanitize.css/8.0.0/sanitize.min.css' rel='stylesheet'>
 <link href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/9.12.0/styles/github.min.css" rel="stylesheet">
@@ -20,13 +21,21 @@
 <h1 class="title">Module <code>tiresias.core.machine_learning</code></h1>
 </header>
 <section id="section-intro">
+<p>The <a title="tiresias.core.machine_learning" href="#tiresias.core.machine_learning"><code>tiresias.core.machine_learning</code></a> module provides implementations of
+differentially private machine learning techniques.</p>
 <details class="source">
 <summary>
 <span>Expand source code</span>
 </summary>
-<pre><code class="python">def compute(model, data):
+<pre><code class="python">&#34;&#34;&#34;
+The `tiresias.core.machine_learning` module provides implementations of 
+differentially private machine learning techniques.
+&#34;&#34;&#34;
+
+def compute(spec, data):
     &#34;&#34;&#34;
-    Given the model and data, compute a differeentially private model.
+    Given the model specification and some data, train a differeentially 
+    private model.
     &#34;&#34;&#34;
     return NotImplementedError()</code></pre>
 </details>
@@ -39,17 +48,19 @@
 <h2 class="section-title" id="header-functions">Functions</h2>
 <dl>
 <dt id="tiresias.core.machine_learning.compute"><code class="name flex">
-<span>def <span class="ident">compute</span></span>(<span>model, data)</span>
+<span>def <span class="ident">compute</span></span>(<span>spec, data)</span>
 </code></dt>
 <dd>
-<section class="desc"><p>Given the model and data, compute a differeentially private model.</p></section>
+<section class="desc"><p>Given the model specification and some data, train a differeentially
+private model.</p></section>
 <details class="source">
 <summary>
 <span>Expand source code</span>
 </summary>
-<pre><code class="python">def compute(model, data):
+<pre><code class="python">def compute(spec, data):
     &#34;&#34;&#34;
-    Given the model and data, compute a differeentially private model.
+    Given the model specification and some data, train a differeentially 
+    private model.
     &#34;&#34;&#34;
     return NotImplementedError()</code></pre>
 </details>

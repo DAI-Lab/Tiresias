@@ -5,8 +5,8 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, minimum-scale=1" />
 <meta name="generator" content="pdoc 0.7.1" />
 <title>tiresias API documentation</title>
-<meta name="description" content="The `Tiresias` platform is a differentially private data marketplace which helps connect users and
-researchers, enabling them to collaboratively …" />
+<meta name="description" content="The `Tiresias` platform is a differentially private data marketplace which
+helps connect users and researchers, enabling them to collaboratively …" />
 <link href='https://cdnjs.cloudflare.com/ajax/libs/normalize/8.0.0/normalize.min.css' rel='stylesheet'>
 <link href='https://cdnjs.cloudflare.com/ajax/libs/10up-sanitize.css/8.0.0/sanitize.min.css' rel='stylesheet'>
 <link href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/9.12.0/styles/github.min.css" rel="stylesheet">
@@ -21,27 +21,178 @@ researchers, enabling them to collaboratively …" />
 <h1 class="title">Module <code>tiresias</code></h1>
 </header>
 <section id="section-intro">
-<p>The <code>Tiresias</code> platform is a differentially private data marketplace which helps connect users and
-researchers, enabling them to collaboratively assemble diverse datasets and develop novel machine
-learning methods and applications.</p>
-<h2 id="installation-usage">Installation / Usage</h2>
-<p>To install use pip:</p>
-<pre><code>$ pip install tiresias
+<p>The <code>Tiresias</code> platform is a differentially private data marketplace which
+helps connect users and researchers, enabling them to collaboratively assemble
+diverse datasets and develop novel machine learning methods and applications.</p>
+<p>To install the <a title="tiresias" href="#tiresias"><code>tiresias</code></a> library in development mode, run the following:</p>
+<pre><code>git clone &lt;http://github.com/DAI-Lab/p2p-data&gt;
+pip install -e .
+pytest
 </code></pre>
-<p>Or clone the repo:</p>
-<pre><code>$ git clone &lt;https://github.com/k15z/tiresias.git&gt;
-$ python setup.py install
+<h2 id="usage">Usage</h2>
+<p>In actual usage scenarios, you should primarily interact with the <a title="tiresias" href="#tiresias"><code>tiresias</code></a>
+platform through the <code>tiresias-server</code> and <code>tiresias-client</code> binaries. For a
+typical deployment, you'll want to launch <code>tiresias-server</code> on a remote machine
+and ask each user to install the <code>tiresias-client</code> and point it at the server.</p>
+<pre><code>server$ tiresias-server --port 3000
+user1$ tiresias-client --server &lt;http://server:3000/&gt;
+user2$ tiresias-client --server &lt;http://server:3000/&gt;
+user3$ tiresias-client --server &lt;http://server:3000/&gt;
 </code></pre>
-<h2 id="contributing">Contributing</h2>
-<p>To set up the repository for local development:</p>
-<pre><code>$ pip install -e .
-$ pytest
+<h3 id="data-collection">Data Collection</h3>
+<p>The users can then install data collection applications which will interact
+locally with the client and insert rows into their personal data store. For
+example, suppose we wrote a data collection application which collects
+information about CPU usage:</p>
+<pre><code>from time import sleep
+import tiresias.client.api as api
+
+api.register_app(8000, &quot;device_info&quot;, {
+    &quot;cpu_usage&quot;: {
+        &quot;description&quot;: &quot;Real time CPU usage statistics.&quot;,
+        &quot;columns&quot;: {
+            &quot;percent_used&quot;: {
+                &quot;type&quot;: &quot;float&quot;, 
+                &quot;description&quot;: &quot;What percent of CPU is used?&quot;
+            },
+            &quot;number_of_cores&quot;: {
+                &quot;type&quot;: &quot;float&quot;, 
+                &quot;description&quot;: &quot;How many logical cores are there?&quot;
+            }
+        }
+    }
+})
+
+while True:
+    api.insert_payload(8000, &quot;device_info&quot;, {
+        &quot;cpu_usage&quot;: [{
+            &quot;percent_used&quot;: get_cpu_usage(),
+            &quot;number_of_cores&quot;: get_num_cores(),
+        }]
+    })
+    sleep(1)
 </code></pre>
-<h2 id="example">Example</h2>
-<dl>
-<dt><strong><code>TBD</code></strong></dt>
-<dd>&nbsp;</dd>
-</dl>
+<p>If every user runs the above application, then each of their personal data
+stores would begin to populate with information about their CPU usage history.
+Note that at this point, no one has access to a user's personal data store
+except for the user's themselves.</p>
+<h3 id="example-query">Example Query</h3>
+<p>If the user wants to contribute their data to a query, then they can check
+with the server and see if there are any pending queries. For example, suppose
+a researcher wanted to estimate the average CPU usage in a differentially
+private manner. They could submit the following query to the server, allowing
+users to see it and potentially contribute their data:</p>
+<pre><code>import tiresias.server.api as api
+
+query_id = api.create_query(&quot;http://&lt;server_ip&gt;:3000/&quot;, {
+    &quot;type&quot;: &quot;basic&quot;,
+    &quot;epsilon&quot;: 1.0,
+    &quot;featurizer&quot;: &quot;SELECT avg(percent_used) FROM device_info.cpu_usage&quot;,
+    &quot;aggregator&quot;: &quot;mean&quot;
+})
+</code></pre>
+<p>The SQL-based <code>featurizer</code> field provides a rich syntax for expressing
+complicated relationships (e.g. joining data from multiple applications -
+for example, examining the relationship between CPU usage and browsing
+history), providing numerous dimensions to explore. In this example, however,
+we're simply computing the average CPU usage for this specific user and
+using that as the feature.</p>
+<p>After giving the users some time to review the query and contribute their
+data, the researcher can then check on the status of the query:</p>
+<pre><code>query = api.fetch_query(&quot;http://localhost:3000/&quot;, query_id)
+print(&quot;The average CPU usage was: %s&quot; % query[&quot;result&quot;])
+</code></pre>
+<p>This will return a value that is differentially private with respect to
+each individual user who chose to contribute their data to the query. Note
+that this is only a very simple example of a query; examples of more complex
+queries such as bounded queries, machine learning queries, and federated
+learning queries are shown below.</p>
+<h2 id="queries-and-mechanisms">Queries and Mechanisms</h2>
+<p>This section describes the four primary types of queries the <code>tiresias</code>
+platform supports.</p>
+<h3 id="basic-queries">Basic Queries</h3>
+<p>Basic queries take the below form where the featurizer is a SQL script that
+returns a single scalar value and the aggregator is one of: <code>mean</code>, <code>median</code>,
+<code>count</code>, or <code>sum</code>.</p>
+<pre><code>query_id = api.create_query(&quot;http://&lt;server_ip&gt;:3000/&quot;, {
+    &quot;type&quot;: &quot;basic&quot;,
+    &quot;epsilon&quot;: 1.0,
+    &quot;featurizer&quot;: &lt;SQL&gt;,
+    &quot;aggregator&quot;: &lt;AGGREGATOR&gt;
+})
+</code></pre>
+<p>This type of query returns a single value correponding to the aggregation
+of all the features.</p>
+<h3 id="bounded-queries">Bounded Queries</h3>
+<p>Bounded queries take the below form where the featurizer is a SQL script that
+returns a single row (e.g. a dictionary). In addition, bounded queries must
+specify the bounds for each value in the dictionary. Bounds can be either a
+<code>set</code> of values from a finite domain or a <code>range</code> of values with a finite
+minimum or maximum.</p>
+<pre><code>query_id = api.create_query(&quot;http://&lt;server_ip&gt;:3000/&quot;, {
+    &quot;type&quot;: &quot;bounded&quot;,
+    &quot;epsilon&quot;: 1.0,
+    &quot;featurizer&quot;: &quot;SELECT species, age FROM profile.pets&quot;,
+    &quot;bounds&quot;: {
+        &quot;species&quot;: {
+            &quot;type&quot;: &quot;set&quot;, 
+            &quot;default&quot;: &quot;dog&quot;,
+            &quot;values&quot;: [&quot;cat&quot;, &quot;dog&quot;], 
+        },
+        &quot;age&quot;: {
+            &quot;type&quot;: &quot;range&quot;, 
+            &quot;low&quot;: 0.0, 
+            &quot;high&quot;: 100.0
+        },
+    }
+})
+</code></pre>
+<p>This type of query returns a list of dictionaries, where each dictionary
+corresponds to the features for a particular user.</p>
+<h3 id="machine-learning-queries">Machine Learning Queries</h3>
+<p>Coming soon&hellip;</p>
+<h3 id="federated-learning-queries">Federated Learning Queries</h3>
+<p>Federated learning queries take the below form where the featurizer is a SQL
+script that returns a list of rows (e.g. a list of dictionaries). In addition,
+federated learning queries specify an aggregator which corresponds to a deep
+learning model.</p>
+<p>For example, consider a simple linear regression query where the inputs and
+outputs are <code>[x1, x2]</code> and <code>y</code> respectively.</p>
+<pre><code>query_id = api.create_query(&quot;http://&lt;server_ip&gt;:3000/&quot;, {
+    &quot;type&quot;: &quot;federated_learning&quot;,
+    &quot;epsilon&quot;: 10.0,
+    &quot;featurizer&quot;: &quot;SELECT x1, x2, y FROM example_app.tableA&quot;,
+    &quot;aggregator&quot;: {
+        &quot;lr&quot;: 1e-4,
+        &quot;loss&quot;: &quot;MSE&quot;,
+        &quot;model&quot;: &quot;Linear&quot;,
+        &quot;inputs&quot;: [&quot;x1&quot;, &quot;x2&quot;],
+        &quot;outputs&quot;: [&quot;y&quot;],
+    }
+})
+</code></pre>
+<p>We can easily switch to a slightly more complex model with multiple hidden
+layers (e.g. a feedforward neural network with two hidden layers and ReLU
+activation functions) by slightly modifying our query.</p>
+<pre><code>query_id = api.create_query(&quot;http://&lt;server_ip&gt;:3000/&quot;, {
+    &quot;type&quot;: &quot;federated_learning&quot;,
+    &quot;epsilon&quot;: 10.0,
+    &quot;featurizer&quot;: &quot;SELECT x1, x2, y FROM example_app.tableA&quot;,
+    &quot;aggregator&quot;: {
+        &quot;lr&quot;: 1e-4,
+        &quot;loss&quot;: &quot;MSE&quot;,
+        &quot;model&quot;: &quot;MultilayerPerceptron&quot;,
+        &quot;shape&quot;: [10, 10],
+        &quot;activation&quot;: &quot;ReLU&quot;,
+        &quot;inputs&quot;: [&quot;x0&quot;, &quot;x1&quot;],
+        &quot;outputs&quot;: [&quot;y&quot;],
+    }
+})
+</code></pre>
+<p>The federated learning framework is also theoretically capable of supporting
+more complex types of models such as recurrent neural networks for natural
+language processing and convolutional neural networks for computer vision; we
+will implement support for these additional features in the near future.</p>
 <details class="source">
 <summary>
 <span>Expand source code</span>
@@ -56,19 +207,25 @@ $ pytest
 <dl>
 <dt><code class="name"><a title="tiresias.client" href="client/index.html">tiresias.client</a></code></dt>
 <dd>
-<section class="desc"></section>
+<section class="desc"><p>The <a title="tiresias.client" href="client/index.html"><code>tiresias.client</code></a> module is responsible for (1) providing a local personal
+data store and (2) performing computations necessary for differential …</p></section>
 </dd>
 <dt><code class="name"><a title="tiresias.core" href="core/index.html">tiresias.core</a></code></dt>
 <dd>
-<section class="desc"></section>
+<section class="desc"><p>The <a title="tiresias.core" href="core/index.html"><code>tiresias.core</code></a> module is responsible for providing the underlying
+implementations of various differential privacy mechanisms and machine
+…</p></section>
 </dd>
 <dt><code class="name"><a title="tiresias.server" href="server/index.html">tiresias.server</a></code></dt>
 <dd>
-<section class="desc"></section>
+<section class="desc"><p>The <a title="tiresias.server" href="server/index.html"><code>tiresias.server</code></a> module is responsible for providing a lightweight REST
+API for creating queries and submitting data to queries. In addition, the …</p></section>
 </dd>
 <dt><code class="name"><a title="tiresias.worker" href="worker/index.html">tiresias.worker</a></code></dt>
 <dd>
-<section class="desc"></section>
+<section class="desc"><p>The <a title="tiresias.worker" href="worker/index.html"><code>tiresias.worker</code></a> module is responsible for providing the server-side
+computations needed to handle a query. This module is currently tightly
+…</p></section>
 </dd>
 </dl>
 </section>
@@ -83,9 +240,18 @@ $ pytest
 <h1>Index</h1>
 <div class="toc">
 <ul>
-<li><a href="#installation-usage">Installation / Usage</a></li>
-<li><a href="#contributing">Contributing</a></li>
-<li><a href="#example">Example</a></li>
+<li><a href="#usage">Usage</a><ul>
+<li><a href="#data-collection">Data Collection</a></li>
+<li><a href="#example-query">Example Query</a></li>
+</ul>
+</li>
+<li><a href="#queries-and-mechanisms">Queries and Mechanisms</a><ul>
+<li><a href="#basic-queries">Basic Queries</a></li>
+<li><a href="#bounded-queries">Bounded Queries</a></li>
+<li><a href="#machine-learning-queries">Machine Learning Queries</a></li>
+<li><a href="#federated-learning-queries">Federated Learning Queries</a></li>
+</ul>
+</li>
 </ul>
 </div>
 <ul id="index">

@@ -1,3 +1,10 @@
+"""
+The `tiresias.server` module is responsible for providing a lightweight REST
+API for creating queries and submitting data to queries. In addition, the 
+server module also launches a `tiresias.worker` thread which is responsible 
+for performing the differential privacy computations needed to produce the
+final result for a given query.
+"""
 # pylint: disable=no-member
 import uuid
 import threading
@@ -7,6 +14,11 @@ from time import sleep
 from json import loads, dumps
 
 def run(port=3000):
+    """
+    This function launches a lightweight REST API for managing queries. In 
+    addition, it spawns a single background `tiresias.worker` thread which 
+    handles all incoming queries.
+    """
     from bottle import Bottle, request, response
 
     api = Bottle()

@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, minimum-scale=1" />
 <meta name="generator" content="pdoc 0.7.1" />
 <title>tiresias.server.api API documentation</title>
-<meta name="description" content="" />
+<meta name="description" content="This module provides helper functions for calling the REST API." />
 <link href='https://cdnjs.cloudflare.com/ajax/libs/normalize/8.0.0/normalize.min.css' rel='stylesheet'>
 <link href='https://cdnjs.cloudflare.com/ajax/libs/10up-sanitize.css/8.0.0/sanitize.min.css' rel='stylesheet'>
 <link href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/9.12.0/styles/github.min.css" rel="stylesheet">
@@ -20,26 +20,48 @@
 <h1 class="title">Module <code>tiresias.server.api</code></h1>
 </header>
 <section id="section-intro">
+<p>This module provides helper functions for calling the REST API.</p>
 <details class="source">
 <summary>
 <span>Expand source code</span>
 </summary>
-<pre><code class="python">import requests
+<pre><code class="python">&#34;&#34;&#34;
+This module provides helper functions for calling the REST API.
+&#34;&#34;&#34;
+import requests
 import urllib.parse
 from json import loads, dumps
 
 def list_queries(server):
+    &#34;&#34;&#34;
+    This helper function submits a GET request to obtain a list of queries.
+    &#34;&#34;&#34;
     return loads(requests.get(server).text)
 
 def create_query(server, query):
+    &#34;&#34;&#34;
+    This helper function submits a GET request to create a new query. See the 
+    client-side query handler `tiersias.client.handler` documentation for 
+    examples of valid queries.
+    &#34;&#34;&#34;
     return requests.get(urllib.parse.urljoin(server, &#34;/query&#34;), params={
         &#34;query&#34;: dumps(query)
     }).text
 
 def approve_query(server, query_id, payload):
+    &#34;&#34;&#34;
+    This helper function submits a GET request to contribute data to a given
+    query.
+    &#34;&#34;&#34;
     return requests.get(urllib.parse.urljoin(server, &#34;/query/%s/submit&#34; % query_id), params={
         &#34;payload&#34;: dumps(payload)
-    })</code></pre>
+    })
+
+def fetch_query(server, query_id):
+    &#34;&#34;&#34;
+    This helper function submits a GET request to obtain a list of queries.
+    &#34;&#34;&#34;
+    return loads(requests.get(urllib.parse.urljoin(server, &#34;/query/%s&#34; % query_id)).text)</code></pre>
 </details>
 </section>
 <section>
@@ -53,12 +75,17 @@ def approve_query(server, query_id, payload):
 <span>def <span class="ident">approve_query</span></span>(<span>server, query_id, payload)</span>
 </code></dt>
 <dd>
-<section class="desc"></section>
+<section class="desc"><p>This helper function submits a GET request to contribute data to a given
+query.</p></section>
 <details class="source">
 <summary>
 <span>Expand source code</span>
 </summary>
 <pre><code class="python">def approve_query(server, query_id, payload):
+    &#34;&#34;&#34;
+    This helper function submits a GET request to contribute data to a given
+    query.
+    &#34;&#34;&#34;
     return requests.get(urllib.parse.urljoin(server, &#34;/query/%s/submit&#34; % query_id), params={
         &#34;payload&#34;: dumps(payload)
     })</code></pre>
@@ -68,27 +95,53 @@ def approve_query(server, query_id, payload):
 <span>def <span class="ident">create_query</span></span>(<span>server, query)</span>
 </code></dt>
 <dd>
-<section class="desc"></section>
+<section class="desc"><p>This helper function submits a GET request to create a new query. See the
+client-side query handler <code>tiersias.client.handler</code> documentation for
+examples of valid queries.</p></section>
 <details class="source">
 <summary>
 <span>Expand source code</span>
 </summary>
 <pre><code class="python">def create_query(server, query):
+    &#34;&#34;&#34;
+    This helper function submits a GET request to create a new query. See the 
+    client-side query handler `tiersias.client.handler` documentation for 
+    examples of valid queries.
+    &#34;&#34;&#34;
     return requests.get(urllib.parse.urljoin(server, &#34;/query&#34;), params={
         &#34;query&#34;: dumps(query)
     }).text</code></pre>
+</details>
+</dd>
+<dt id="tiresias.server.api.fetch_query"><code class="name flex">
+<span>def <span class="ident">fetch_query</span></span>(<span>server, query_id)</span>
+</code></dt>
+<dd>
+<section class="desc"><p>This helper function submits a GET request to obtain a list of queries.</p></section>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">def fetch_query(server, query_id):
+    &#34;&#34;&#34;
+    This helper function submits a GET request to obtain a list of queries.
+    &#34;&#34;&#34;
+    return loads(requests.get(urllib.parse.urljoin(server, &#34;/query/%s&#34; % query_id)).text)</code></pre>
 </details>
 </dd>
 <dt id="tiresias.server.api.list_queries"><code class="name flex">
 <span>def <span class="ident">list_queries</span></span>(<span>server)</span>
 </code></dt>
 <dd>
-<section class="desc"></section>
+<section class="desc"><p>This helper function submits a GET request to obtain a list of queries.</p></section>
 <details class="source">
 <summary>
 <span>Expand source code</span>
 </summary>
 <pre><code class="python">def list_queries(server):
+    &#34;&#34;&#34;
+    This helper function submits a GET request to obtain a list of queries.
+    &#34;&#34;&#34;
     return loads(requests.get(server).text)</code></pre>
 </details>
 </dd>
@@ -112,6 +165,7 @@ def approve_query(server, query_id, payload):
 <ul class="">
 <li><code><a title="tiresias.server.api.approve_query" href="#tiresias.server.api.approve_query">approve_query</a></code></li>
 <li><code><a title="tiresias.server.api.create_query" href="#tiresias.server.api.create_query">create_query</a></code></li>
+<li><code><a title="tiresias.server.api.fetch_query" href="#tiresias.server.api.fetch_query">fetch_query</a></code></li>
 <li><code><a title="tiresias.server.api.list_queries" href="#tiresias.server.api.list_queries">list_queries</a></code></li>
 </ul>
 </li>

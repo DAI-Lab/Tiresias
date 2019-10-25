@@ -1,6 +1,11 @@
+"""
+The `tiresias.core.machine_learning` module provides implementations of 
+differentially private machine learning techniques.
+"""
 
-def compute(model, data):
+def compute(spec, data):
     """
-    Given the model and data, compute a differeentially private model.
+    Given the model specification and some data, train a differeentially 
+    private model.
     """
     return NotImplementedError()

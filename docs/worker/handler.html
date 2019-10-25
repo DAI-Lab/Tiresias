@@ -30,6 +30,10 @@ import tiresias.core.machine_learning as ml
 import tiresias.core.federated_learning as fl
 
 def handle(query, data):
+    &#34;&#34;&#34;
+    This function takes in a generic query and data and dispatches it to the 
+    appropriate query handler.
+    &#34;&#34;&#34;
     dispatcher = {
         &#34;basic&#34;: handle_basic,
         &#34;bounded&#34;: handle_bounded,
@@ -40,6 +44,14 @@ def handle(query, data):
     return func(query, data)
 
 def handle_basic(query, data):
+    &#34;&#34;&#34;
+    This function handles basic queries. The data is expected to be a list of 
+    scalars, one from each user who contributed to the query, and this function
+    applies the appropriate differentially private aggregation mechanism.
+    
+    See `tiresias.client.handler.handle_basic` for corresponding function on 
+    the client side.
+    &#34;&#34;&#34;
     dispatcher = {
         &#34;mean&#34;: dp.mean,
         &#34;median&#34;: dp.median,
@@ -50,12 +62,36 @@ def handle_basic(query, data):
     return func(data, query[&#34;epsilon&#34;])
 
 def handle_bounded(query, data):
+    &#34;&#34;&#34;
+    This function handles bounded queries. No work needs to be done on the 
+    server side for bounded queries as the differential privacy mechanisms are
+    applied on the client side for this type of query.
+
+    See `tiresias.client.handler.handle_bounded` for corresponding function on 
+    the client side.
+    &#34;&#34;&#34;
     return data
 
 def handle_ml(query, data):
+    &#34;&#34;&#34;
+    This function handles machine learning queries. The machine learning 
+    model implementations are provided `tiresias.core.machine_learning`.
+
+    See `tiresias.client.handler.handle_ml` for corresponding function on 
+    the client side.
+    &#34;&#34;&#34;
     return ml.compute(query[&#34;aggregator&#34;], data)
 
 def handle_fl(query, data):
+    &#34;&#34;&#34;
+    This function handles federated learning queries. The federated learning 
+    model implementations are provided `tiresias.core.federated_learning`. On
+    the server side, this simply entails aggregating the gradients computed 
+    by the clients.
+
+    See `tiresias.client.handler.handle_fl` for corresponding function on 
+    the client side.
+    &#34;&#34;&#34;
     model = fl.aggregate(query[&#34;aggregator&#34;], b64_decode(query[&#34;weights&#34;]), [b64_decode(d) for d in data])
     return b64_encode(model)</code></pre>
 </details>
@@ -71,12 +107,17 @@ def handle_fl(query, data):
 <span>def <span class="ident">handle</span></span>(<span>query, data)</span>
 </code></dt>
 <dd>
-<section class="desc"></section>
+<section class="desc"><p>This function takes in a generic query and data and dispatches it to the
+appropriate query handler.</p></section>
 <details class="source">
 <summary>
 <span>Expand source code</span>
 </summary>
 <pre><code class="python">def handle(query, data):
+    &#34;&#34;&#34;
+    This function takes in a generic query and data and dispatches it to the 
+    appropriate query handler.
+    &#34;&#34;&#34;
     dispatcher = {
         &#34;basic&#34;: handle_basic,
         &#34;bounded&#34;: handle_bounded,
@@ -91,12 +132,24 @@ def handle_fl(query, data):
 <span>def <span class="ident">handle_basic</span></span>(<span>query, data)</span>
 </code></dt>
 <dd>
-<section class="desc"></section>
+<section class="desc"><p>This function handles basic queries. The data is expected to be a list of
+scalars, one from each user who contributed to the query, and this function
+applies the appropriate differentially private aggregation mechanism.</p>
+<p>See <a title="tiresias.client.handler.handle_basic" href="../client/handler.html#tiresias.client.handler.handle_basic"><code>handle_basic()</code></a> for corresponding function on
+the client side.</p></section>
 <details class="source">
 <summary>
 <span>Expand source code</span>
 </summary>
 <pre><code class="python">def handle_basic(query, data):
+    &#34;&#34;&#34;
+    This function handles basic queries. The data is expected to be a list of 
+    scalars, one from each user who contributed to the query, and this function
+    applies the appropriate differentially private aggregation mechanism.
+    
+    See `tiresias.client.handler.handle_basic` for corresponding function on 
+    the client side.
+    &#34;&#34;&#34;
     dispatcher = {
         &#34;mean&#34;: dp.mean,
         &#34;median&#34;: dp.median,
@@ -111,12 +164,24 @@ def handle_fl(query, data):
 <span>def <span class="ident">handle_bounded</span></span>(<span>query, data)</span>
 </code></dt>
 <dd>
-<section class="desc"></section>
+<section class="desc"><p>This function handles bounded queries. No work needs to be done on the
+server side for bounded queries as the differential privacy mechanisms are
+applied on the client side for this type of query.</p>
+<p>See <a title="tiresias.client.handler.handle_bounded" href="../client/handler.html#tiresias.client.handler.handle_bounded"><code>handle_bounded()</code></a> for corresponding function on
+the client side.</p></section>
 <details class="source">
 <summary>
 <span>Expand source code</span>
 </summary>
 <pre><code class="python">def handle_bounded(query, data):
+    &#34;&#34;&#34;
+    This function handles bounded queries. No work needs to be done on the 
+    server side for bounded queries as the differential privacy mechanisms are
+    applied on the client side for this type of query.
+
+    See `tiresias.client.handler.handle_bounded` for corresponding function on 
+    the client side.
+    &#34;&#34;&#34;
     return data</code></pre>
 </details>
 </dd>
@@ -124,12 +189,26 @@ def handle_fl(query, data):
 <span>def <span class="ident">handle_fl</span></span>(<span>query, data)</span>
 </code></dt>
 <dd>
-<section class="desc"></section>
+<section class="desc"><p>This function handles federated learning queries. The federated learning
+model implementations are provided <a title="tiresias.core.federated_learning" href="../core/federated_learning.html"><code>tiresias.core.federated_learning</code></a>. On
+the server side, this simply entails aggregating the gradients computed
+by the clients.</p>
+<p>See <a title="tiresias.client.handler.handle_fl" href="../client/handler.html#tiresias.client.handler.handle_fl"><code>handle_fl()</code></a> for corresponding function on
+the client side.</p></section>
 <details class="source">
 <summary>
 <span>Expand source code</span>
 </summary>
 <pre><code class="python">def handle_fl(query, data):
+    &#34;&#34;&#34;
+    This function handles federated learning queries. The federated learning 
+    model implementations are provided `tiresias.core.federated_learning`. On
+    the server side, this simply entails aggregating the gradients computed 
+    by the clients.
+
+    See `tiresias.client.handler.handle_fl` for corresponding function on 
+    the client side.
+    &#34;&#34;&#34;
     model = fl.aggregate(query[&#34;aggregator&#34;], b64_decode(query[&#34;weights&#34;]), [b64_decode(d) for d in data])
     return b64_encode(model)</code></pre>
 </details>
@@ -138,12 +217,22 @@ def handle_fl(query, data):
 <span>def <span class="ident">handle_ml</span></span>(<span>query, data)</span>
 </code></dt>
 <dd>
-<section class="desc"></section>
+<section class="desc"><p>This function handles machine learning queries. The machine learning
+model implementations are provided <a title="tiresias.core.machine_learning" href="../core/machine_learning.html"><code>tiresias.core.machine_learning</code></a>.</p>
+<p>See <a title="tiresias.client.handler.handle_ml" href="../client/handler.html#tiresias.client.handler.handle_ml"><code>handle_ml()</code></a> for corresponding function on
+the client side.</p></section>
 <details class="source">
 <summary>
 <span>Expand source code</span>
 </summary>
 <pre><code class="python">def handle_ml(query, data):
+    &#34;&#34;&#34;
+    This function handles machine learning queries. The machine learning 
+    model implementations are provided `tiresias.core.machine_learning`.
+
+    See `tiresias.client.handler.handle_ml` for corresponding function on 
+    the client side.
+    &#34;&#34;&#34;
     return ml.compute(query[&#34;aggregator&#34;], data)</code></pre>
 </details>
 </dd>
