@@ -31,13 +31,26 @@ differentially private machine learning techniques.</p>
 The `tiresias.core.machine_learning` module provides implementations of 
 differentially private machine learning techniques.
 &#34;&#34;&#34;
+import numpy as np
+import diffprivlib.models as dp
 
-def compute(spec, data):
+def compute(spec, data, epsilon):
     &#34;&#34;&#34;
     Given the model specification and some data, train a differeentially 
     private model.
     &#34;&#34;&#34;
-    return NotImplementedError()</code></pre>
+    x = np.array([[d[var] for var in spec[&#34;inputs&#34;]] for d in data])
+    y = np.array([d[spec[&#34;output&#34;]] for d in data])
+    if spec[&#34;model&#34;] == &#34;GaussianNB&#34;:
+        clf = dp.GaussianNB(epsilon=epsilon, bounds=spec[&#34;bounds&#34;])
+        clf.fit(x, y)
+        return clf
+    elif spec[&#34;model&#34;] == &#34;LogisticRegression&#34;:
+        clf = dp.LogisticRegression(epsilon=epsilon, data_norm=spec[&#34;data_norm&#34;])
+        clf.fit(x, y)
+        return clf
+    else:
+        raise ValueError(spec[&#34;model&#34;])</code></pre>
 </details>
 </section>
 <section>
@@ -48,7 +61,7 @@ def compute(spec, data):
 <h2 class="section-title" id="header-functions">Functions</h2>
 <dl>
 <dt id="tiresias.core.machine_learning.compute"><code class="name flex">
-<span>def <span class="ident">compute</span></span>(<span>spec, data)</span>
+<span>def <span class="ident">compute</span></span>(<span>spec, data, epsilon)</span>
 </code></dt>
 <dd>
 <section class="desc"><p>Given the model specification and some data, train a differeentially
@@ -57,12 +70,23 @@ private model.</p></section>
 <summary>
 <span>Expand source code</span>
 </summary>
-<pre><code class="python">def compute(spec, data):
+<pre><code class="python">def compute(spec, data, epsilon):
     &#34;&#34;&#34;
     Given the model specification and some data, train a differeentially 
     private model.
     &#34;&#34;&#34;
-    return NotImplementedError()</code></pre>
+    x = np.array([[d[var] for var in spec[&#34;inputs&#34;]] for d in data])
+    y = np.array([d[spec[&#34;output&#34;]] for d in data])
+    if spec[&#34;model&#34;] == &#34;GaussianNB&#34;:
+        clf = dp.GaussianNB(epsilon=epsilon, bounds=spec[&#34;bounds&#34;])
+        clf.fit(x, y)
+        return clf
+    elif spec[&#34;model&#34;] == &#34;LogisticRegression&#34;:
+        clf = dp.LogisticRegression(epsilon=epsilon, data_norm=spec[&#34;data_norm&#34;])
+        clf.fit(x, y)
+        return clf
+    else:
+        raise ValueError(spec[&#34;model&#34;])</code></pre>
 </details>
 </dd>
 </dl>

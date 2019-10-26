@@ -54,7 +54,7 @@ def handle_ml(query, data):
     See `tiresias.client.handler.handle_ml` for corresponding function on 
     the client side.
     """
-    return ml.compute(query["aggregator"], data)
+    return ml.compute(query["aggregator"], data, query["epsilon"])
 
 def handle_fl(query, data):
     """

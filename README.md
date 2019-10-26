@@ -151,7 +151,45 @@ This type of query returns a list of dictionaries, where each dictionary
 corresponds to the features for a particular user.
 
 ### Machine Learning Queries
-Coming soon...
+Machine learning queries take the below form where the featurizer is a SQL 
+script that returns a single row (e.g. a dictionaries). In addition, machine 
+learning queries specify an aggregator which corresponds to a specific model.
+
+For example, consider a simple Gaussian Naive Bayes query where the inputs and
+outputs are `[x1, x2]` and `y` respectively.
+```
+query_id = api.create_query("http://<server_ip>:3000/", {
+    "type": "federated_learning",
+    "epsilon": 10.0,
+    "featurizer": "SELECT x1, x2, y FROM example_app.tableA",
+    "aggregator": {
+        "model": "GaussianNB",
+        "inputs": ["x0", "x1"],
+        "output": "y",
+        "bounds": [(0.0, 1.0), (0.0, 1.0)]
+    }
+})
+```
+Note that the model specification is provided in the aggregator field and that
+we specify the bound for each input variable.
+
+Here's another example of a logistic regression query where the inputs and
+outputs are `[x1, x2]` and `y` respectively.
+```
+query_id = api.create_query("http://<server_ip>:3000/", {
+    "type": "federated_learning",
+    "epsilon": 10.0,
+    "featurizer": "SELECT x1, x2, y FROM example_app.tableA",
+    "aggregator": {
+        "model": "LogisticRegression",
+        "inputs": ["x0", "x1"],
+        "output": "y",
+        "data_norm": 2.0
+    }
+})
+```
+Note that in this case, while we don't need to specify bounds, we do need to 
+specify the maximum norm of any particular row in the data.
 
 ### Federated Learning Queries
 Federated learning queries take the below form where the featurizer is a SQL 

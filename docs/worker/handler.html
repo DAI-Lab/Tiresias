@@ -80,7 +80,7 @@ def handle_ml(query, data):
     See `tiresias.client.handler.handle_ml` for corresponding function on 
     the client side.
     &#34;&#34;&#34;
-    return ml.compute(query[&#34;aggregator&#34;], data)
+    return ml.compute(query[&#34;aggregator&#34;], data, query[&#34;epsilon&#34;])
 
 def handle_fl(query, data):
     &#34;&#34;&#34;
@@ -233,7 +233,7 @@ the client side.</p></section>
     See `tiresias.client.handler.handle_ml` for corresponding function on 
     the client side.
     &#34;&#34;&#34;
-    return ml.compute(query[&#34;aggregator&#34;], data)</code></pre>
+    return ml.compute(query[&#34;aggregator&#34;], data, query[&#34;epsilon&#34;])</code></pre>
 </details>
 </dd>
 </dl>

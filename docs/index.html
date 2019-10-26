@@ -150,7 +150,41 @@ minimum or maximum.</p>
 <p>This type of query returns a list of dictionaries, where each dictionary
 corresponds to the features for a particular user.</p>
 <h3 id="machine-learning-queries">Machine Learning Queries</h3>
-<p>Coming soon&hellip;</p>
+<p>Machine learning queries take the below form where the featurizer is a SQL
+script that returns a single row (e.g. a dictionaries). In addition, machine
+learning queries specify an aggregator which corresponds to a specific model.</p>
+<p>For example, consider a simple Gaussian Naive Bayes query where the inputs and
+outputs are <code>[x1, x2]</code> and <code>y</code> respectively.</p>
+<pre><code>query_id = api.create_query(&quot;http://&lt;server_ip&gt;:3000/&quot;, {
+    &quot;type&quot;: &quot;federated_learning&quot;,
+    &quot;epsilon&quot;: 10.0,
+    &quot;featurizer&quot;: &quot;SELECT x1, x2, y FROM example_app.tableA&quot;,
+    &quot;aggregator&quot;: {
+        &quot;model&quot;: &quot;GaussianNB&quot;,
+        &quot;inputs&quot;: [&quot;x0&quot;, &quot;x1&quot;],
+        &quot;output&quot;: &quot;y&quot;,
+        &quot;bounds&quot;: [(0.0, 1.0), (0.0, 1.0)]
+    }
+})
+</code></pre>
+<p>Note that the model specification is provided in the aggregator field and that
+we specify the bound for each input variable.</p>
+<p>Here's another example of a logistic regression query where the inputs and
+outputs are <code>[x1, x2]</code> and <code>y</code> respectively.</p>
+<pre><code>query_id = api.create_query(&quot;http://&lt;server_ip&gt;:3000/&quot;, {
+    &quot;type&quot;: &quot;federated_learning&quot;,
+    &quot;epsilon&quot;: 10.0,
+    &quot;featurizer&quot;: &quot;SELECT x1, x2, y FROM example_app.tableA&quot;,
+    &quot;aggregator&quot;: {
+        &quot;model&quot;: &quot;LogisticRegression&quot;,
+        &quot;inputs&quot;: [&quot;x0&quot;, &quot;x1&quot;],
+        &quot;output&quot;: &quot;y&quot;,
+        &quot;data_norm&quot;: 2.0
+    }
+})
+</code></pre>
+<p>Note that in this case, while we don't need to specify bounds, we do need to
+specify the maximum norm of any particular row in the data.</p>
 <h3 id="federated-learning-queries">Federated Learning Queries</h3>
 <p>Federated learning queries take the below form where the featurizer is a SQL
 script that returns a list of rows (e.g. a list of dictionaries). In addition,
