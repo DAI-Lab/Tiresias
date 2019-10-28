@@ -5,6 +5,9 @@ differentially private machine learning techniques.
 import numpy as np
 import diffprivlib.models as dp
 
+GaussianNB = dp.GaussianNB
+LogisticRegression = dp.LogisticRegression
+
 def compute(spec, data, epsilon):
     """
     Given the model specification and some data, train a differeentially 
@@ -13,11 +16,11 @@ def compute(spec, data, epsilon):
     x = np.array([[d[var] for var in spec["inputs"]] for d in data])
     y = np.array([d[spec["output"]] for d in data])
     if spec["model"] == "GaussianNB":
-        clf = dp.GaussianNB(epsilon=epsilon, bounds=spec["bounds"])
+        clf = GaussianNB(epsilon=epsilon, bounds=spec["bounds"])
         clf.fit(x, y)
         return clf
     elif spec["model"] == "LogisticRegression":
-        clf = dp.LogisticRegression(epsilon=epsilon, data_norm=spec["data_norm"])
+        clf = LogisticRegression(epsilon=epsilon, data_norm=spec["data_norm"])
         clf.fit(x, y)
         return clf
     else:

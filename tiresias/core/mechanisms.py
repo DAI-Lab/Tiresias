@@ -69,10 +69,22 @@ def sum(x, epsilon):
 
 def finite_categorical(x, domain, epsilon):
     """
-    This function applies randomized response to a categorical variable.
+    This function applies randomized response to a categorical variable. The
+    input can be either a np.array or a single value. There is no restriction
+    on the value type but in most scenarios, the value will be either an int 
+    or a string.
     """
-    assert x in domain
     assert len(set(domain)) == len(domain)
+
+    if type(x) == np.ndarray:
+        for _x in x:
+            assert _x in domain
+        p = (np.exp(epsilon) - 1) / (len(domain) - 1 + np.exp(epsilon))
+        flags = np.random.random(size=x.shape) > p
+        x[flags] = np.random.choice(list(domain), size=np.sum(flags))
+        return x
+
+    assert x in domain
     if epsilon == float("inf"):
         return x
     p = (np.exp(epsilon) - 1) / (len(domain) - 1 + np.exp(epsilon))
@@ -82,8 +94,15 @@ def finite_categorical(x, domain, epsilon):
 
 def bounded_continuous(x, low, high, epsilon):
     """
-    This function applies randomized response to a bounded continuous variable.
+    This function applies randomized response to a bounded continuous variable. 
+    The input `x` can be either a np.array or a single value.
     """
+    if type(x) == np.ndarray:
+        assert (x >= low).all() and (x <= high).all()
+        if epsilon == float("inf"):
+            return x
+        return x + np.random.laplace(scale=(high-low)/epsilon, size=x.shape)
+
     assert x >= low and x <= high
     if epsilon == float("inf"):
         return x

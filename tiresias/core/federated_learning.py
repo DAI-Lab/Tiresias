@@ -72,7 +72,7 @@ def gradients(spec, weights, data, epsilon):
     gradients = _gradients(model, epsilon)
     return gradients
 
-def _gradients(model, epsilon, delta=0.001):
+def _gradients(model, epsilon, delta=0.01):
     # Extract a differentially private estimate of the gradients
     gradients = []
     
