@@ -31,8 +31,11 @@ and evaluate differentially private models.</p>
 The `tiresias.benchmark.utils` module provides utility functions to help train 
 and evaluate differentially private models.
 &#34;&#34;&#34;
+import torch
 import numpy as np
 import tiresias.core.mechanisms as mechanisms
+from sklearn.metrics import r2_score
+from tiresias.core.federated_learning import get_gradients, put_gradients, merge_gradients
 
 def apply_ldp(X, y, epsilon, is_discrete=False):
     &#34;&#34;&#34;
@@ -50,7 +53,69 @@ def apply_ldp(X, y, epsilon, is_discrete=False):
     else:
         low, high = np.min(y), np.max(y)
         y = mechanisms.bounded_continuous(y, low=low, high=high, epsilon=epsilon)
-    return X, y</code></pre>
+    return X, y
+
+class DreadNought(object):
+    &#34;&#34;&#34;
+    The `DreadNought` class provides a sklearn-like wrapper around PyTorch 
+    models which simulates federated learning with local differential privacy.
+
+    ```
+    model = DreadNought(
+        model=torch.nn.Sequential(
+            torch.nn.Linear(3, 1),
+        ), 
+        loss=torch.nn.functional.mse_loss, 
+        epsilon=1000.0, 
+        epochs=100, 
+        lr=0.1
+    )
+
+    X = np.array([
+        [1.0, 1.0, 1.0],
+        [1.0, 1.0, 0.0],
+        [1.0, 0.0, 1.0],
+        [0.0, 1.0, 1.0],
+        [0.0, 0.0, 0.0],
+    ])
+    Y = np.array([3.0, 2.0, 2.0, 2.0, 0.0])
+    model.fit(X, Y)
+    print(model.score(X, Y))
+    ```
+    &#34;&#34;&#34;
+
+    def __init__(self, model, loss, epsilon, epochs, lr):
+        self.model = model
+        self.epsilon = epsilon
+        self.epochs = epochs
+        self.loss = loss
+        self.lr = lr
+
+    def fit(self, X, Y):
+        optimizer = torch.optim.Adam(self.model.parameters(), lr=self.lr)
+        epsilon = self.epsilon / self.epochs
+        for epoch in range(self.epochs):
+            gradients = []
+            for i in range(X.shape[0]):
+                self.model.zero_grad()
+                x = torch.FloatTensor([X[i]])
+                y = torch.FloatTensor([[Y[i]]])
+                loss = self.loss(self.model(x), y)
+                loss.backward()
+                gradients.append(get_gradients(self.model, epsilon))
+            put_gradients(self.model, merge_gradients(gradients))
+            optimizer.step()
+
+    def predict(self, X):
+        Y = []
+        for i in range(X.shape[0]):
+            x = torch.FloatTensor([X[i]])
+            y = self.model(x)
+            Y.append(y.item())
+        return np.array(Y)
+
+    def score(self, X, Y):
+        return r2_score(Y, self.predict(X))</code></pre>
 </details>
 </section>
 <section>
@@ -93,6 +158,163 @@ or discrete values.</p></section>
 </dl>
 </section>
 <section>
+<h2 class="section-title" id="header-classes">Classes</h2>
+<dl>
+<dt id="tiresias.benchmark.utils.DreadNought"><code class="flex name class">
+<span>class <span class="ident">DreadNought</span></span>
+<span>(</span><span>model, loss, epsilon, epochs, lr)</span>
+</code></dt>
+<dd>
+<section class="desc"><p>The <a title="tiresias.benchmark.utils.DreadNought" href="#tiresias.benchmark.utils.DreadNought"><code>DreadNought</code></a> class provides a sklearn-like wrapper around PyTorch
+models which simulates federated learning with local differential privacy.</p>
+<pre><code>model = DreadNought(
+    model=torch.nn.Sequential(
+        torch.nn.Linear(3, 1),
+    ), 
+    loss=torch.nn.functional.mse_loss, 
+    epsilon=1000.0, 
+    epochs=100, 
+    lr=0.1
+)
+
+X = np.array([
+    [1.0, 1.0, 1.0],
+    [1.0, 1.0, 0.0],
+    [1.0, 0.0, 1.0],
+    [0.0, 1.0, 1.0],
+    [0.0, 0.0, 0.0],
+])
+Y = np.array([3.0, 2.0, 2.0, 2.0, 0.0])
+model.fit(X, Y)
+print(model.score(X, Y))
+</code></pre></section>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">class DreadNought(object):
+    &#34;&#34;&#34;
+    The `DreadNought` class provides a sklearn-like wrapper around PyTorch 
+    models which simulates federated learning with local differential privacy.
+
+    ```
+    model = DreadNought(
+        model=torch.nn.Sequential(
+            torch.nn.Linear(3, 1),
+        ), 
+        loss=torch.nn.functional.mse_loss, 
+        epsilon=1000.0, 
+        epochs=100, 
+        lr=0.1
+    )
+
+    X = np.array([
+        [1.0, 1.0, 1.0],
+        [1.0, 1.0, 0.0],
+        [1.0, 0.0, 1.0],
+        [0.0, 1.0, 1.0],
+        [0.0, 0.0, 0.0],
+    ])
+    Y = np.array([3.0, 2.0, 2.0, 2.0, 0.0])
+    model.fit(X, Y)
+    print(model.score(X, Y))
+    ```
+    &#34;&#34;&#34;
+
+    def __init__(self, model, loss, epsilon, epochs, lr):
+        self.model = model
+        self.epsilon = epsilon
+        self.epochs = epochs
+        self.loss = loss
+        self.lr = lr
+
+    def fit(self, X, Y):
+        optimizer = torch.optim.Adam(self.model.parameters(), lr=self.lr)
+        epsilon = self.epsilon / self.epochs
+        for epoch in range(self.epochs):
+            gradients = []
+            for i in range(X.shape[0]):
+                self.model.zero_grad()
+                x = torch.FloatTensor([X[i]])
+                y = torch.FloatTensor([[Y[i]]])
+                loss = self.loss(self.model(x), y)
+                loss.backward()
+                gradients.append(get_gradients(self.model, epsilon))
+            put_gradients(self.model, merge_gradients(gradients))
+            optimizer.step()
+
+    def predict(self, X):
+        Y = []
+        for i in range(X.shape[0]):
+            x = torch.FloatTensor([X[i]])
+            y = self.model(x)
+            Y.append(y.item())
+        return np.array(Y)
+
+    def score(self, X, Y):
+        return r2_score(Y, self.predict(X))</code></pre>
+</details>
+<h3>Methods</h3>
+<dl>
+<dt id="tiresias.benchmark.utils.DreadNought.fit"><code class="name flex">
+<span>def <span class="ident">fit</span></span>(<span>self, X, Y)</span>
+</code></dt>
+<dd>
+<section class="desc"></section>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">def fit(self, X, Y):
+    optimizer = torch.optim.Adam(self.model.parameters(), lr=self.lr)
+    epsilon = self.epsilon / self.epochs
+    for epoch in range(self.epochs):
+        gradients = []
+        for i in range(X.shape[0]):
+            self.model.zero_grad()
+            x = torch.FloatTensor([X[i]])
+            y = torch.FloatTensor([[Y[i]]])
+            loss = self.loss(self.model(x), y)
+            loss.backward()
+            gradients.append(get_gradients(self.model, epsilon))
+        put_gradients(self.model, merge_gradients(gradients))
+        optimizer.step()</code></pre>
+</details>
+</dd>
+<dt id="tiresias.benchmark.utils.DreadNought.predict"><code class="name flex">
+<span>def <span class="ident">predict</span></span>(<span>self, X)</span>
+</code></dt>
+<dd>
+<section class="desc"></section>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">def predict(self, X):
+    Y = []
+    for i in range(X.shape[0]):
+        x = torch.FloatTensor([X[i]])
+        y = self.model(x)
+        Y.append(y.item())
+    return np.array(Y)</code></pre>
+</details>
+</dd>
+<dt id="tiresias.benchmark.utils.DreadNought.score"><code class="name flex">
+<span>def <span class="ident">score</span></span>(<span>self, X, Y)</span>
+</code></dt>
+<dd>
+<section class="desc"></section>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">def score(self, X, Y):
+    return r2_score(Y, self.predict(X))</code></pre>
+</details>
+</dd>
+</dl>
+</dd>
+</dl>
 </section>
 </article>
 <nav id="sidebar">
@@ -109,6 +331,18 @@ or discrete values.</p></section>
 <li><h3><a href="#header-functions">Functions</a></h3>
 <ul class="">
 <li><code><a title="tiresias.benchmark.utils.apply_ldp" href="#tiresias.benchmark.utils.apply_ldp">apply_ldp</a></code></li>
+</ul>
+</li>
+<li><h3><a href="#header-classes">Classes</a></h3>
+<ul>
+<li>
+<h4><code><a title="tiresias.benchmark.utils.DreadNought" href="#tiresias.benchmark.utils.DreadNought">DreadNought</a></code></h4>
+<ul class="">
+<li><code><a title="tiresias.benchmark.utils.DreadNought.fit" href="#tiresias.benchmark.utils.DreadNought.fit">fit</a></code></li>
+<li><code><a title="tiresias.benchmark.utils.DreadNought.predict" href="#tiresias.benchmark.utils.DreadNought.predict">predict</a></code></li>
+<li><code><a title="tiresias.benchmark.utils.DreadNought.score" href="#tiresias.benchmark.utils.DreadNought.score">score</a></code></li>
+</ul>
+</li>
 </ul>
 </li>
 </ul>

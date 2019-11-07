@@ -64,18 +64,29 @@ def gradients(spec, weights, data, epsilon):
 
     [1] https://arxiv.org/pdf/1607.00133.pdf
     """
-    # Load weights into the model
     model = build_model(spec, weights)
-    # Feed the data through the model
     backpropagate(spec, model, data)
-    # Extract the (anonymized) gradients
-    gradients = _gradients(model, epsilon)
-    return gradients
+    return get_gradients(model, epsilon)
 
-def _gradients(model, epsilon, delta=0.01):
-    # Extract a differentially private estimate of the gradients
-    gradients = []
-    
+def aggregate(spec, weights, list_of_gradients):
+    """
+    This function takes in the model specification, current weights, and a list 
+    of gradient updates. It returns a new PyTorch model where the gradient 
+    updates have been applied to the weights.
+    """
+    model = build_model(spec, weights)
+    model.zero_grad()
+    put_gradients(model, merge_gradients(list_of_gradients))
+    optimizer = torch.optim.Adam(model.parameters(), lr=spec["lr"])
+    optimizer.step()
+    return model
+
+def get_gradients(model, epsilon, delta=0.01):
+    """
+    This function extracts a differentially private copy of the gradients 
+    from a PyTorch model where the loss has already been backpropagated through
+    the neural network.
+    """
     # Clip the gradient
     max_norm = 1.0
     total_norm = 0.0
@@ -91,31 +102,30 @@ def _gradients(model, epsilon, delta=0.01):
     for p in model.parameters():
         p.grad.data += torch.normal(torch.zeros(p.grad.data.size()), torch.zeros(p.grad.data.size()) + (scale**2) * (max_norm**2))
     
+    # Return a list containing the gradients
     gradients = []
     for p in model.parameters():
-        gradients.append(p.grad.data)
+        gradients.append(p.grad.data.clone())
     return gradients
 
-def aggregate(spec, weights, list_of_gradients):
+def put_gradients(model, gradients):
     """
-    This function takes in the model specification, current weights, and a list 
-    of gradient updates. It returns a new PyTorch model where the gradient 
-    updates have been applied to the weights.
+    This function takes the gradients extracted by the `get_gradients` 
+    function and loads them back into the model.
     """
-    # Load weights into the model
-    model = build_model(spec, weights)
-    model.zero_grad()
+    for p, g in zip(model.parameters(), gradients):
+        p.grad = g
 
-    # Aggregate the gradient updates
-    total_gradients = list_of_gradients[0]
+def merge_gradients(list_of_gradients):
+    """
+    This function takes a list of gradients (e.g. a list of the objects 
+    that are returned by the `get_gradients` function) and merges them into 
+    a single gradient update which can be passed to `put_gradients`.
+    """
+    accumulator = list_of_gradients[0]
     for gradients in list_of_gradients[1:]:
         for i, g in enumerate(gradients):
-            total_gradients[i] += g
-
-    # Load the gradients and update the model
-    for p, g in zip(model.parameters(), total_gradients):
-        p.grad = g
-    optimizer = torch.optim.Adam(model.parameters(), lr=spec["lr"])
-    optimizer.step()
-
-    return model
+            accumulator[i] += g
+    for g in accumulator:
+        g /= len(list_of_gradients)
+    return accumulator

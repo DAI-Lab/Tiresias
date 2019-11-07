@@ -96,18 +96,29 @@ def gradients(spec, weights, data, epsilon):
 
     [1] https://arxiv.org/pdf/1607.00133.pdf
     &#34;&#34;&#34;
-    # Load weights into the model
     model = build_model(spec, weights)
-    # Feed the data through the model
     backpropagate(spec, model, data)
-    # Extract the (anonymized) gradients
-    gradients = _gradients(model, epsilon)
-    return gradients
+    return get_gradients(model, epsilon)
 
-def _gradients(model, epsilon, delta=0.01):
-    # Extract a differentially private estimate of the gradients
-    gradients = []
-    
+def aggregate(spec, weights, list_of_gradients):
+    &#34;&#34;&#34;
+    This function takes in the model specification, current weights, and a list 
+    of gradient updates. It returns a new PyTorch model where the gradient 
+    updates have been applied to the weights.
+    &#34;&#34;&#34;
+    model = build_model(spec, weights)
+    model.zero_grad()
+    put_gradients(model, merge_gradients(list_of_gradients))
+    optimizer = torch.optim.Adam(model.parameters(), lr=spec[&#34;lr&#34;])
+    optimizer.step()
+    return model
+
+def get_gradients(model, epsilon, delta=0.01):
+    &#34;&#34;&#34;
+    This function extracts a differentially private copy of the gradients 
+    from a PyTorch model where the loss has already been backpropagated through
+    the neural network.
+    &#34;&#34;&#34;
     # Clip the gradient
     max_norm = 1.0
     total_norm = 0.0
@@ -123,34 +134,33 @@ def _gradients(model, epsilon, delta=0.01):
     for p in model.parameters():
         p.grad.data += torch.normal(torch.zeros(p.grad.data.size()), torch.zeros(p.grad.data.size()) + (scale**2) * (max_norm**2))
     
+    # Return a list containing the gradients
     gradients = []
     for p in model.parameters():
-        gradients.append(p.grad.data)
+        gradients.append(p.grad.data.clone())
     return gradients
 
-def aggregate(spec, weights, list_of_gradients):
+def put_gradients(model, gradients):
     &#34;&#34;&#34;
-    This function takes in the model specification, current weights, and a list 
-    of gradient updates. It returns a new PyTorch model where the gradient 
-    updates have been applied to the weights.
+    This function takes the gradients extracted by the `get_gradients` 
+    function and loads them back into the model.
     &#34;&#34;&#34;
-    # Load weights into the model
-    model = build_model(spec, weights)
-    model.zero_grad()
+    for p, g in zip(model.parameters(), gradients):
+        p.grad = g
 
-    # Aggregate the gradient updates
-    total_gradients = list_of_gradients[0]
+def merge_gradients(list_of_gradients):
+    &#34;&#34;&#34;
+    This function takes a list of gradients (e.g. a list of the objects 
+    that are returned by the `get_gradients` function) and merges them into 
+    a single gradient update which can be passed to `put_gradients`.
+    &#34;&#34;&#34;
+    accumulator = list_of_gradients[0]
     for gradients in list_of_gradients[1:]:
         for i, g in enumerate(gradients):
-            total_gradients[i] += g
-
-    # Load the gradients and update the model
-    for p, g in zip(model.parameters(), total_gradients):
-        p.grad = g
-    optimizer = torch.optim.Adam(model.parameters(), lr=spec[&#34;lr&#34;])
-    optimizer.step()
-
-    return model</code></pre>
+            accumulator[i] += g
+    for g in accumulator:
+        g /= len(list_of_gradients)
+    return accumulator</code></pre>
 </details>
 </section>
 <section>
@@ -177,22 +187,11 @@ updates have been applied to the weights.</p></section>
     of gradient updates. It returns a new PyTorch model where the gradient 
     updates have been applied to the weights.
     &#34;&#34;&#34;
-    # Load weights into the model
     model = build_model(spec, weights)
     model.zero_grad()
-
-    # Aggregate the gradient updates
-    total_gradients = list_of_gradients[0]
-    for gradients in list_of_gradients[1:]:
-        for i, g in enumerate(gradients):
-            total_gradients[i] += g
-
-    # Load the gradients and update the model
-    for p, g in zip(model.parameters(), total_gradients):
-        p.grad = g
+    put_gradients(model, merge_gradients(list_of_gradients))
     optimizer = torch.optim.Adam(model.parameters(), lr=spec[&#34;lr&#34;])
     optimizer.step()
-
     return model</code></pre>
 </details>
 </dd>
@@ -257,6 +256,45 @@ and optionally initializes it with the given weights.</p></section>
     return model</code></pre>
 </details>
 </dd>
+<dt id="tiresias.core.federated_learning.get_gradients"><code class="name flex">
+<span>def <span class="ident">get_gradients</span></span>(<span>model, epsilon, delta=0.01)</span>
+</code></dt>
+<dd>
+<section class="desc"><p>This function extracts a differentially private copy of the gradients
+from a PyTorch model where the loss has already been backpropagated through
+the neural network.</p></section>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">def get_gradients(model, epsilon, delta=0.01):
+    &#34;&#34;&#34;
+    This function extracts a differentially private copy of the gradients 
+    from a PyTorch model where the loss has already been backpropagated through
+    the neural network.
+    &#34;&#34;&#34;
+    # Clip the gradient
+    max_norm = 1.0
+    total_norm = 0.0
+    for p in model.parameters():
+        param_norm = p.grad.data.norm(2)
+        total_norm += param_norm.item() ** 2
+    total_norm = total_norm ** (1. / 2)
+    for p in model.parameters():
+        p.grad.data = p.grad.data / max(1.0, total_norm / max_norm)
+
+    # Add noise to the gradient
+    scale = np.sqrt(2 * np.log(1.25 / delta)) / epsilon
+    for p in model.parameters():
+        p.grad.data += torch.normal(torch.zeros(p.grad.data.size()), torch.zeros(p.grad.data.size()) + (scale**2) * (max_norm**2))
+    
+    # Return a list containing the gradients
+    gradients = []
+    for p in model.parameters():
+        gradients.append(p.grad.data.clone())
+    return gradients</code></pre>
+</details>
+</dd>
 <dt id="tiresias.core.federated_learning.gradients"><code class="name flex">
 <span>def <span class="ident">gradients</span></span>(<span>spec, weights, data, epsilon)</span>
 </code></dt>
@@ -277,13 +315,54 @@ estimate of the gradient using the method proposed in [1].</p>
 
     [1] https://arxiv.org/pdf/1607.00133.pdf
     &#34;&#34;&#34;
-    # Load weights into the model
     model = build_model(spec, weights)
-    # Feed the data through the model
     backpropagate(spec, model, data)
-    # Extract the (anonymized) gradients
-    gradients = _gradients(model, epsilon)
-    return gradients</code></pre>
+    return get_gradients(model, epsilon)</code></pre>
+</details>
+</dd>
+<dt id="tiresias.core.federated_learning.merge_gradients"><code class="name flex">
+<span>def <span class="ident">merge_gradients</span></span>(<span>list_of_gradients)</span>
+</code></dt>
+<dd>
+<section class="desc"><p>This function takes a list of gradients (e.g. a list of the objects
+that are returned by the <a title="tiresias.core.federated_learning.get_gradients" href="#tiresias.core.federated_learning.get_gradients"><code>get_gradients()</code></a> function) and merges them into
+a single gradient update which can be passed to <a title="tiresias.core.federated_learning.put_gradients" href="#tiresias.core.federated_learning.put_gradients"><code>put_gradients()</code></a>.</p></section>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">def merge_gradients(list_of_gradients):
+    &#34;&#34;&#34;
+    This function takes a list of gradients (e.g. a list of the objects 
+    that are returned by the `get_gradients` function) and merges them into 
+    a single gradient update which can be passed to `put_gradients`.
+    &#34;&#34;&#34;
+    accumulator = list_of_gradients[0]
+    for gradients in list_of_gradients[1:]:
+        for i, g in enumerate(gradients):
+            accumulator[i] += g
+    for g in accumulator:
+        g /= len(list_of_gradients)
+    return accumulator</code></pre>
+</details>
+</dd>
+<dt id="tiresias.core.federated_learning.put_gradients"><code class="name flex">
+<span>def <span class="ident">put_gradients</span></span>(<span>model, gradients)</span>
+</code></dt>
+<dd>
+<section class="desc"><p>This function takes the gradients extracted by the <a title="tiresias.core.federated_learning.get_gradients" href="#tiresias.core.federated_learning.get_gradients"><code>get_gradients()</code></a>
+function and loads them back into the model.</p></section>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">def put_gradients(model, gradients):
+    &#34;&#34;&#34;
+    This function takes the gradients extracted by the `get_gradients` 
+    function and loads them back into the model.
+    &#34;&#34;&#34;
+    for p, g in zip(model.parameters(), gradients):
+        p.grad = g</code></pre>
 </details>
 </dd>
 <dt id="tiresias.core.federated_learning.random_weights"><code class="name flex">
@@ -325,11 +404,14 @@ of weights for the model.</p></section>
 </ul>
 </li>
 <li><h3><a href="#header-functions">Functions</a></h3>
-<ul class="">
+<ul class="two-column">
 <li><code><a title="tiresias.core.federated_learning.aggregate" href="#tiresias.core.federated_learning.aggregate">aggregate</a></code></li>
 <li><code><a title="tiresias.core.federated_learning.backpropagate" href="#tiresias.core.federated_learning.backpropagate">backpropagate</a></code></li>
 <li><code><a title="tiresias.core.federated_learning.build_model" href="#tiresias.core.federated_learning.build_model">build_model</a></code></li>
+<li><code><a title="tiresias.core.federated_learning.get_gradients" href="#tiresias.core.federated_learning.get_gradients">get_gradients</a></code></li>
 <li><code><a title="tiresias.core.federated_learning.gradients" href="#tiresias.core.federated_learning.gradients">gradients</a></code></li>
+<li><code><a title="tiresias.core.federated_learning.merge_gradients" href="#tiresias.core.federated_learning.merge_gradients">merge_gradients</a></code></li>
+<li><code><a title="tiresias.core.federated_learning.put_gradients" href="#tiresias.core.federated_learning.put_gradients">put_gradients</a></code></li>
 <li><code><a title="tiresias.core.federated_learning.random_weights" href="#tiresias.core.federated_learning.random_weights">random_weights</a></code></li>
 </ul>
 </li>

@@ -32,12 +32,13 @@ The `tiresias.benchmark.regression` module evaluates a variety of different
 regression models and datasets for different epsilon values.
 &#34;&#34;&#34;
 import time
+import torch
 import logging
 import warnings
 import numpy as np
 import pandas as pd
-from tiresias.benchmark.utils import apply_ldp
 from tiresias.core import machine_learning as ml
+from tiresias.benchmark.utils import apply_ldp, DreadNought
 
 from sklearn.ensemble import RandomForestRegressor
 from sklearn.datasets import fetch_california_housing, load_diabetes
@@ -65,6 +66,21 @@ def _run_sklearn(X_train, X_test, y_train, y_test, model_builder=None, N=10):
         running_time.append(time.time() - start)
     return np.mean(accuracy), np.mean(running_time)
 
+def dreadnought_test(input_dims, epsilon):
+    def _builder():
+        model = DreadNought(
+            model=torch.nn.Sequential(
+                torch.nn.Linear(input_dims, 1),
+            ), 
+            loss=torch.nn.functional.mse_loss, 
+            epsilon=epsilon, 
+            epochs=16, 
+            lr=0.01
+        )
+        return model
+    _builder.__name__ = &#34;DreadNought.LinearRegression&#34;
+    return _builder
+
 def run_benchmark(epsilons=[10.0, 100.0], N=10):
     &#34;&#34;&#34;
     This function evaluates the pre-specified models and datasets with the 
@@ -83,7 +99,7 @@ def run_benchmark(epsilons=[10.0, 100.0], N=10):
         for epsilon in epsilons:
             # LDP Queries
             X_dp, y_dp = apply_ldp(X_train, y_train, epsilon, is_discrete=True)
-            for model in [RandomForestRegressor, SVR, LinearRegression]:
+            for model in [RandomForestRegressor, SVR, LinearRegression, dreadnought_test(input_dims=X_train.shape[1])]:
                 log.info(&#34;Running %s (ε = %s)&#34; % (model.__name__, epsilon))
                 accuracy, running_time = _run_sklearn(X_dp, X_test, y_dp, y_test, model_builder=model)
                 log.info(&#34;Done. Acc = %.02f, Speed = %.02f&#34; % (accuracy, running_time))
@@ -91,6 +107,21 @@ def run_benchmark(epsilons=[10.0, 100.0], N=10):
                 results.append({
                     &#34;dataset&#34;: dataset_name,
                     &#34;query&#34;: &#34;bounded&#34;,
+                    &#34;model&#34;: model.__name__,
+                    &#34;epsilon&#34;: epsilon,
+                    &#34;accuracy&#34;: accuracy,
+                    &#34;running_time&#34;: running_time
+                })
+
+            # Federated Learning
+            for model in [dreadnought_test(input_dims=X_train.shape[1], epsilon=epsilon)]:
+                log.info(&#34;Running %s (ε = %s)&#34; % (model.__name__, epsilon))
+                accuracy, running_time = _run_sklearn(X_train, X_test, y_train, y_test, model_builder=model)
+                log.info(&#34;Done. Acc = %.02f, Speed = %.02f&#34; % (accuracy, running_time))
+
+                results.append({
+                    &#34;dataset&#34;: dataset_name,
+                    &#34;query&#34;: &#34;federated_learning&#34;,
                     &#34;model&#34;: model.__name__,
                     &#34;epsilon&#34;: epsilon,
                     &#34;accuracy&#34;: accuracy,
@@ -107,6 +138,31 @@ def run_benchmark(epsilons=[10.0, 100.0], N=10):
 <section>
 <h2 class="section-title" id="header-functions">Functions</h2>
 <dl>
+<dt id="tiresias.benchmark.regression.dreadnought_test"><code class="name flex">
+<span>def <span class="ident">dreadnought_test</span></span>(<span>input_dims, epsilon)</span>
+</code></dt>
+<dd>
+<section class="desc"></section>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">def dreadnought_test(input_dims, epsilon):
+    def _builder():
+        model = DreadNought(
+            model=torch.nn.Sequential(
+                torch.nn.Linear(input_dims, 1),
+            ), 
+            loss=torch.nn.functional.mse_loss, 
+            epsilon=epsilon, 
+            epochs=16, 
+            lr=0.01
+        )
+        return model
+    _builder.__name__ = &#34;DreadNought.LinearRegression&#34;
+    return _builder</code></pre>
+</details>
+</dd>
 <dt id="tiresias.benchmark.regression.run_benchmark"><code class="name flex">
 <span>def <span class="ident">run_benchmark</span></span>(<span>epsilons=[10.0, 100.0], N=10)</span>
 </code></dt>
@@ -136,7 +192,7 @@ each epsilon value and the average accuracy and running time is returned.</p></s
         for epsilon in epsilons:
             # LDP Queries
             X_dp, y_dp = apply_ldp(X_train, y_train, epsilon, is_discrete=True)
-            for model in [RandomForestRegressor, SVR, LinearRegression]:
+            for model in [RandomForestRegressor, SVR, LinearRegression, dreadnought_test(input_dims=X_train.shape[1])]:
                 log.info(&#34;Running %s (ε = %s)&#34; % (model.__name__, epsilon))
                 accuracy, running_time = _run_sklearn(X_dp, X_test, y_dp, y_test, model_builder=model)
                 log.info(&#34;Done. Acc = %.02f, Speed = %.02f&#34; % (accuracy, running_time))
@@ -144,6 +200,21 @@ each epsilon value and the average accuracy and running time is returned.</p></s
                 results.append({
                     &#34;dataset&#34;: dataset_name,
                     &#34;query&#34;: &#34;bounded&#34;,
+                    &#34;model&#34;: model.__name__,
+                    &#34;epsilon&#34;: epsilon,
+                    &#34;accuracy&#34;: accuracy,
+                    &#34;running_time&#34;: running_time
+                })
+
+            # Federated Learning
+            for model in [dreadnought_test(input_dims=X_train.shape[1], epsilon=epsilon)]:
+                log.info(&#34;Running %s (ε = %s)&#34; % (model.__name__, epsilon))
+                accuracy, running_time = _run_sklearn(X_train, X_test, y_train, y_test, model_builder=model)
+                log.info(&#34;Done. Acc = %.02f, Speed = %.02f&#34; % (accuracy, running_time))
+
+                results.append({
+                    &#34;dataset&#34;: dataset_name,
+                    &#34;query&#34;: &#34;federated_learning&#34;,
                     &#34;model&#34;: model.__name__,
                     &#34;epsilon&#34;: epsilon,
                     &#34;accuracy&#34;: accuracy,
@@ -171,6 +242,7 @@ each epsilon value and the average accuracy and running time is returned.</p></s
 </li>
 <li><h3><a href="#header-functions">Functions</a></h3>
 <ul class="">
+<li><code><a title="tiresias.benchmark.regression.dreadnought_test" href="#tiresias.benchmark.regression.dreadnought_test">dreadnought_test</a></code></li>
 <li><code><a title="tiresias.benchmark.regression.run_benchmark" href="#tiresias.benchmark.regression.run_benchmark">run_benchmark</a></code></li>
 </ul>
 </li>
