@@ -100,10 +100,22 @@ def sum(x, epsilon):
 
 def finite_categorical(x, domain, epsilon):
     &#34;&#34;&#34;
-    This function applies randomized response to a categorical variable.
+    This function applies randomized response to a categorical variable. The
+    input can be either a np.array or a single value. There is no restriction
+    on the value type but in most scenarios, the value will be either an int 
+    or a string.
     &#34;&#34;&#34;
-    assert x in domain
     assert len(set(domain)) == len(domain)
+
+    if type(x) == np.ndarray:
+        for _x in x:
+            assert _x in domain
+        p = (np.exp(epsilon) - 1) / (len(domain) - 1 + np.exp(epsilon))
+        flags = np.random.random(size=x.shape) &gt; p
+        x[flags] = np.random.choice(list(domain), size=np.sum(flags))
+        return x
+
+    assert x in domain
     if epsilon == float(&#34;inf&#34;):
         return x
     p = (np.exp(epsilon) - 1) / (len(domain) - 1 + np.exp(epsilon))
@@ -113,8 +125,15 @@ def finite_categorical(x, domain, epsilon):
 
 def bounded_continuous(x, low, high, epsilon):
     &#34;&#34;&#34;
-    This function applies randomized response to a bounded continuous variable.
+    This function applies randomized response to a bounded continuous variable. 
+    The input `x` can be either a np.array or a single value.
     &#34;&#34;&#34;
+    if type(x) == np.ndarray:
+        assert (x &gt;= low).all() and (x &lt;= high).all()
+        if epsilon == float(&#34;inf&#34;):
+            return x
+        return x + np.random.laplace(scale=(high-low)/epsilon, size=x.shape)
+
     assert x &gt;= low and x &lt;= high
     if epsilon == float(&#34;inf&#34;):
         return x
@@ -146,15 +165,23 @@ def staircase_mechanism(x, epsilon):
 <span>def <span class="ident">bounded_continuous</span></span>(<span>x, low, high, epsilon)</span>
 </code></dt>
 <dd>
-<section class="desc"><p>This function applies randomized response to a bounded continuous variable.</p></section>
+<section class="desc"><p>This function applies randomized response to a bounded continuous variable.
+The input <code>x</code> can be either a np.array or a single value.</p></section>
 <details class="source">
 <summary>
 <span>Expand source code</span>
 </summary>
 <pre><code class="python">def bounded_continuous(x, low, high, epsilon):
     &#34;&#34;&#34;
-    This function applies randomized response to a bounded continuous variable.
+    This function applies randomized response to a bounded continuous variable. 
+    The input `x` can be either a np.array or a single value.
     &#34;&#34;&#34;
+    if type(x) == np.ndarray:
+        assert (x &gt;= low).all() and (x &lt;= high).all()
+        if epsilon == float(&#34;inf&#34;):
+            return x
+        return x + np.random.laplace(scale=(high-low)/epsilon, size=x.shape)
+
     assert x &gt;= low and x &lt;= high
     if epsilon == float(&#34;inf&#34;):
         return x
@@ -183,17 +210,32 @@ using the Laplace mechanism.</p></section>
 <span>def <span class="ident">finite_categorical</span></span>(<span>x, domain, epsilon)</span>
 </code></dt>
 <dd>
-<section class="desc"><p>This function applies randomized response to a categorical variable.</p></section>
+<section class="desc"><p>This function applies randomized response to a categorical variable. The
+input can be either a np.array or a single value. There is no restriction
+on the value type but in most scenarios, the value will be either an int
+or a string.</p></section>
 <details class="source">
 <summary>
 <span>Expand source code</span>
 </summary>
 <pre><code class="python">def finite_categorical(x, domain, epsilon):
     &#34;&#34;&#34;
-    This function applies randomized response to a categorical variable.
+    This function applies randomized response to a categorical variable. The
+    input can be either a np.array or a single value. There is no restriction
+    on the value type but in most scenarios, the value will be either an int 
+    or a string.
     &#34;&#34;&#34;
-    assert x in domain
     assert len(set(domain)) == len(domain)
+
+    if type(x) == np.ndarray:
+        for _x in x:
+            assert _x in domain
+        p = (np.exp(epsilon) - 1) / (len(domain) - 1 + np.exp(epsilon))
+        flags = np.random.random(size=x.shape) &gt; p
+        x[flags] = np.random.choice(list(domain), size=np.sum(flags))
+        return x
+
+    assert x in domain
     if epsilon == float(&#34;inf&#34;):
         return x
     p = (np.exp(epsilon) - 1) / (len(domain) - 1 + np.exp(epsilon))

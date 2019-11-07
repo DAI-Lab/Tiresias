@@ -4,9 +4,9 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, minimum-scale=1" />
 <meta name="generator" content="pdoc 0.7.1" />
-<title>tiresias.core.machine_learning API documentation</title>
-<meta name="description" content="The `tiresias.core.machine_learning` module provides implementations of
-differentially private machine learning techniques." />
+<title>tiresias.benchmark.utils API documentation</title>
+<meta name="description" content="The `tiresias.benchmark.utils` module provides utility functions to help train
+and evaluate differentially private models." />
 <link href='https://cdnjs.cloudflare.com/ajax/libs/normalize/8.0.0/normalize.min.css' rel='stylesheet'>
 <link href='https://cdnjs.cloudflare.com/ajax/libs/10up-sanitize.css/8.0.0/sanitize.min.css' rel='stylesheet'>
 <link href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/9.12.0/styles/github.min.css" rel="stylesheet">
@@ -18,42 +18,39 @@ differentially private machine learning techniques." />
 <main>
 <article id="content">
 <header>
-<h1 class="title">Module <code>tiresias.core.machine_learning</code></h1>
+<h1 class="title">Module <code>tiresias.benchmark.utils</code></h1>
 </header>
 <section id="section-intro">
-<p>The <a title="tiresias.core.machine_learning" href="#tiresias.core.machine_learning"><code>tiresias.core.machine_learning</code></a> module provides implementations of
-differentially private machine learning techniques.</p>
+<p>The <a title="tiresias.benchmark.utils" href="#tiresias.benchmark.utils"><code>tiresias.benchmark.utils</code></a> module provides utility functions to help train
+and evaluate differentially private models.</p>
 <details class="source">
 <summary>
 <span>Expand source code</span>
 </summary>
 <pre><code class="python">&#34;&#34;&#34;
-The `tiresias.core.machine_learning` module provides implementations of 
-differentially private machine learning techniques.
+The `tiresias.benchmark.utils` module provides utility functions to help train 
+and evaluate differentially private models.
 &#34;&#34;&#34;
 import numpy as np
-import diffprivlib.models as dp
+import tiresias.core.mechanisms as mechanisms
 
-GaussianNB = dp.GaussianNB
-LogisticRegression = dp.LogisticRegression
-
-def compute(spec, data, epsilon):
+def apply_ldp(X, y, epsilon, is_discrete=False):
     &#34;&#34;&#34;
-    Given the model specification and some data, train a differeentially 
-    private model.
+    This function produces an epsilon-differentially private version of the 
+    given data where X consists of real values and y contains either real 
+    or discrete values.
     &#34;&#34;&#34;
-    x = np.array([[d[var] for var in spec[&#34;inputs&#34;]] for d in data])
-    y = np.array([d[spec[&#34;output&#34;]] for d in data])
-    if spec[&#34;model&#34;] == &#34;GaussianNB&#34;:
-        clf = GaussianNB(epsilon=epsilon, bounds=spec[&#34;bounds&#34;])
-        clf.fit(x, y)
-        return clf
-    elif spec[&#34;model&#34;] == &#34;LogisticRegression&#34;:
-        clf = LogisticRegression(epsilon=epsilon, data_norm=spec[&#34;data_norm&#34;])
-        clf.fit(x, y)
-        return clf
+    X, y = X.copy(), y.copy()
+    epsilon = epsilon / (X.shape[1] + 1)
+    for dim in range(0, X.shape[1]):
+        low, high = np.min(X[:,dim]), np.max(X[:,dim])
+        X[:,dim] = mechanisms.bounded_continuous(X[:,dim], low=low, high=high, epsilon=epsilon)
+    if is_discrete:
+        y = mechanisms.finite_categorical(y, set(y), epsilon=epsilon)
     else:
-        raise ValueError(spec[&#34;model&#34;])</code></pre>
+        low, high = np.min(y), np.max(y)
+        y = mechanisms.bounded_continuous(y, low=low, high=high, epsilon=epsilon)
+    return X, y</code></pre>
 </details>
 </section>
 <section>
@@ -63,33 +60,34 @@ def compute(spec, data, epsilon):
 <section>
 <h2 class="section-title" id="header-functions">Functions</h2>
 <dl>
-<dt id="tiresias.core.machine_learning.compute"><code class="name flex">
-<span>def <span class="ident">compute</span></span>(<span>spec, data, epsilon)</span>
+<dt id="tiresias.benchmark.utils.apply_ldp"><code class="name flex">
+<span>def <span class="ident">apply_ldp</span></span>(<span>X, y, epsilon, is_discrete=False)</span>
 </code></dt>
 <dd>
-<section class="desc"><p>Given the model specification and some data, train a differeentially
-private model.</p></section>
+<section class="desc"><p>This function produces an epsilon-differentially private version of the
+given data where X consists of real values and y contains either real
+or discrete values.</p></section>
 <details class="source">
 <summary>
 <span>Expand source code</span>
 </summary>
-<pre><code class="python">def compute(spec, data, epsilon):
+<pre><code class="python">def apply_ldp(X, y, epsilon, is_discrete=False):
     &#34;&#34;&#34;
-    Given the model specification and some data, train a differeentially 
-    private model.
+    This function produces an epsilon-differentially private version of the 
+    given data where X consists of real values and y contains either real 
+    or discrete values.
     &#34;&#34;&#34;
-    x = np.array([[d[var] for var in spec[&#34;inputs&#34;]] for d in data])
-    y = np.array([d[spec[&#34;output&#34;]] for d in data])
-    if spec[&#34;model&#34;] == &#34;GaussianNB&#34;:
-        clf = GaussianNB(epsilon=epsilon, bounds=spec[&#34;bounds&#34;])
-        clf.fit(x, y)
-        return clf
-    elif spec[&#34;model&#34;] == &#34;LogisticRegression&#34;:
-        clf = LogisticRegression(epsilon=epsilon, data_norm=spec[&#34;data_norm&#34;])
-        clf.fit(x, y)
-        return clf
+    X, y = X.copy(), y.copy()
+    epsilon = epsilon / (X.shape[1] + 1)
+    for dim in range(0, X.shape[1]):
+        low, high = np.min(X[:,dim]), np.max(X[:,dim])
+        X[:,dim] = mechanisms.bounded_continuous(X[:,dim], low=low, high=high, epsilon=epsilon)
+    if is_discrete:
+        y = mechanisms.finite_categorical(y, set(y), epsilon=epsilon)
     else:
-        raise ValueError(spec[&#34;model&#34;])</code></pre>
+        low, high = np.min(y), np.max(y)
+        y = mechanisms.bounded_continuous(y, low=low, high=high, epsilon=epsilon)
+    return X, y</code></pre>
 </details>
 </dd>
 </dl>
@@ -105,12 +103,12 @@ private model.</p></section>
 <ul id="index">
 <li><h3>Super-module</h3>
 <ul>
-<li><code><a title="tiresias.core" href="index.html">tiresias.core</a></code></li>
+<li><code><a title="tiresias.benchmark" href="index.html">tiresias.benchmark</a></code></li>
 </ul>
 </li>
 <li><h3><a href="#header-functions">Functions</a></h3>
 <ul class="">
-<li><code><a title="tiresias.core.machine_learning.compute" href="#tiresias.core.machine_learning.compute">compute</a></code></li>
+<li><code><a title="tiresias.benchmark.utils.apply_ldp" href="#tiresias.benchmark.utils.apply_ldp">apply_ldp</a></code></li>
 </ul>
 </li>
 </ul>

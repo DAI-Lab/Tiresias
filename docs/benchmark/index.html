@@ -4,9 +4,9 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, minimum-scale=1" />
 <meta name="generator" content="pdoc 0.7.1" />
-<title>tiresias.core.machine_learning API documentation</title>
-<meta name="description" content="The `tiresias.core.machine_learning` module provides implementations of
-differentially private machine learning techniques." />
+<title>tiresias.benchmark API documentation</title>
+<meta name="description" content="The `tiresias.benchmark` module provides an integrated framework for measuring
+the performance of the different differential privacy mechanisms …" />
 <link href='https://cdnjs.cloudflare.com/ajax/libs/normalize/8.0.0/normalize.min.css' rel='stylesheet'>
 <link href='https://cdnjs.cloudflare.com/ajax/libs/10up-sanitize.css/8.0.0/sanitize.min.css' rel='stylesheet'>
 <link href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/9.12.0/styles/github.min.css" rel="stylesheet">
@@ -18,81 +18,48 @@ differentially private machine learning techniques." />
 <main>
 <article id="content">
 <header>
-<h1 class="title">Module <code>tiresias.core.machine_learning</code></h1>
+<h1 class="title">Module <code>tiresias.benchmark</code></h1>
 </header>
 <section id="section-intro">
-<p>The <a title="tiresias.core.machine_learning" href="#tiresias.core.machine_learning"><code>tiresias.core.machine_learning</code></a> module provides implementations of
-differentially private machine learning techniques.</p>
+<p>The <a title="tiresias.benchmark" href="#tiresias.benchmark"><code>tiresias.benchmark</code></a> module provides an integrated framework for measuring
+the performance of the different differential privacy mechanisms supported by
+the <a title="tiresias" href="../index.html"><code>tiresias</code></a> library. It provides the tools to simulate an environment for a
+variety of different data science and machine learning queries.</p>
 <details class="source">
 <summary>
 <span>Expand source code</span>
 </summary>
 <pre><code class="python">&#34;&#34;&#34;
-The `tiresias.core.machine_learning` module provides implementations of 
-differentially private machine learning techniques.
-&#34;&#34;&#34;
-import numpy as np
-import diffprivlib.models as dp
-
-GaussianNB = dp.GaussianNB
-LogisticRegression = dp.LogisticRegression
-
-def compute(spec, data, epsilon):
-    &#34;&#34;&#34;
-    Given the model specification and some data, train a differeentially 
-    private model.
-    &#34;&#34;&#34;
-    x = np.array([[d[var] for var in spec[&#34;inputs&#34;]] for d in data])
-    y = np.array([d[spec[&#34;output&#34;]] for d in data])
-    if spec[&#34;model&#34;] == &#34;GaussianNB&#34;:
-        clf = GaussianNB(epsilon=epsilon, bounds=spec[&#34;bounds&#34;])
-        clf.fit(x, y)
-        return clf
-    elif spec[&#34;model&#34;] == &#34;LogisticRegression&#34;:
-        clf = LogisticRegression(epsilon=epsilon, data_norm=spec[&#34;data_norm&#34;])
-        clf.fit(x, y)
-        return clf
-    else:
-        raise ValueError(spec[&#34;model&#34;])</code></pre>
+The `tiresias.benchmark` module provides an integrated framework for measuring
+the performance of the different differential privacy mechanisms supported by 
+the `tiresias` library. It provides the tools to simulate an environment for a
+variety of different data science and machine learning queries.
+&#34;&#34;&#34;</code></pre>
 </details>
 </section>
 <section>
-</section>
-<section>
-</section>
-<section>
-<h2 class="section-title" id="header-functions">Functions</h2>
+<h2 class="section-title" id="header-submodules">Sub-modules</h2>
 <dl>
-<dt id="tiresias.core.machine_learning.compute"><code class="name flex">
-<span>def <span class="ident">compute</span></span>(<span>spec, data, epsilon)</span>
-</code></dt>
+<dt><code class="name"><a title="tiresias.benchmark.classification" href="classification/index.html">tiresias.benchmark.classification</a></code></dt>
 <dd>
-<section class="desc"><p>Given the model specification and some data, train a differeentially
-private model.</p></section>
-<details class="source">
-<summary>
-<span>Expand source code</span>
-</summary>
-<pre><code class="python">def compute(spec, data, epsilon):
-    &#34;&#34;&#34;
-    Given the model specification and some data, train a differeentially 
-    private model.
-    &#34;&#34;&#34;
-    x = np.array([[d[var] for var in spec[&#34;inputs&#34;]] for d in data])
-    y = np.array([d[spec[&#34;output&#34;]] for d in data])
-    if spec[&#34;model&#34;] == &#34;GaussianNB&#34;:
-        clf = GaussianNB(epsilon=epsilon, bounds=spec[&#34;bounds&#34;])
-        clf.fit(x, y)
-        return clf
-    elif spec[&#34;model&#34;] == &#34;LogisticRegression&#34;:
-        clf = LogisticRegression(epsilon=epsilon, data_norm=spec[&#34;data_norm&#34;])
-        clf.fit(x, y)
-        return clf
-    else:
-        raise ValueError(spec[&#34;model&#34;])</code></pre>
-</details>
+<section class="desc"><p>The <a title="tiresias.benchmark.classification" href="classification/index.html"><code>tiresias.benchmark.classification</code></a> module evaluates a variety of different
+classification models and datasets for different epsilon values.</p></section>
+</dd>
+<dt><code class="name"><a title="tiresias.benchmark.regression" href="regression/index.html">tiresias.benchmark.regression</a></code></dt>
+<dd>
+<section class="desc"><p>The <a title="tiresias.benchmark.regression" href="regression/index.html"><code>tiresias.benchmark.regression</code></a> module evaluates a variety of different
+regression models and datasets for different epsilon values.</p></section>
+</dd>
+<dt><code class="name"><a title="tiresias.benchmark.utils" href="utils.html">tiresias.benchmark.utils</a></code></dt>
+<dd>
+<section class="desc"><p>The <a title="tiresias.benchmark.utils" href="utils.html"><code>tiresias.benchmark.utils</code></a> module provides utility functions to help train
+and evaluate differentially private models.</p></section>
 </dd>
 </dl>
+</section>
+<section>
+</section>
+<section>
 </section>
 <section>
 </section>
@@ -105,12 +72,14 @@ private model.</p></section>
 <ul id="index">
 <li><h3>Super-module</h3>
 <ul>
-<li><code><a title="tiresias.core" href="index.html">tiresias.core</a></code></li>
+<li><code><a title="tiresias" href="../index.html">tiresias</a></code></li>
 </ul>
 </li>
-<li><h3><a href="#header-functions">Functions</a></h3>
-<ul class="">
-<li><code><a title="tiresias.core.machine_learning.compute" href="#tiresias.core.machine_learning.compute">compute</a></code></li>
+<li><h3><a href="#header-submodules">Sub-modules</a></h3>
+<ul>
+<li><code><a title="tiresias.benchmark.classification" href="classification/index.html">tiresias.benchmark.classification</a></code></li>
+<li><code><a title="tiresias.benchmark.regression" href="regression/index.html">tiresias.benchmark.regression</a></code></li>
+<li><code><a title="tiresias.benchmark.utils" href="utils.html">tiresias.benchmark.utils</a></code></li>
 </ul>
 </li>
 </ul>

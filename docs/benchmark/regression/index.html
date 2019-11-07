@@ -4,9 +4,9 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, minimum-scale=1" />
 <meta name="generator" content="pdoc 0.7.1" />
-<title>tiresias.core.machine_learning API documentation</title>
-<meta name="description" content="The `tiresias.core.machine_learning` module provides implementations of
-differentially private machine learning techniques." />
+<title>tiresias.benchmark.regression API documentation</title>
+<meta name="description" content="The `tiresias.benchmark.regression` module evaluates a variety of different
+regression models and datasets for different epsilon values." />
 <link href='https://cdnjs.cloudflare.com/ajax/libs/normalize/8.0.0/normalize.min.css' rel='stylesheet'>
 <link href='https://cdnjs.cloudflare.com/ajax/libs/10up-sanitize.css/8.0.0/sanitize.min.css' rel='stylesheet'>
 <link href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/9.12.0/styles/github.min.css" rel="stylesheet">
@@ -18,42 +18,86 @@ differentially private machine learning techniques." />
 <main>
 <article id="content">
 <header>
-<h1 class="title">Module <code>tiresias.core.machine_learning</code></h1>
+<h1 class="title">Module <code>tiresias.benchmark.regression</code></h1>
 </header>
 <section id="section-intro">
-<p>The <a title="tiresias.core.machine_learning" href="#tiresias.core.machine_learning"><code>tiresias.core.machine_learning</code></a> module provides implementations of
-differentially private machine learning techniques.</p>
+<p>The <a title="tiresias.benchmark.regression" href="#tiresias.benchmark.regression"><code>tiresias.benchmark.regression</code></a> module evaluates a variety of different
+regression models and datasets for different epsilon values.</p>
 <details class="source">
 <summary>
 <span>Expand source code</span>
 </summary>
 <pre><code class="python">&#34;&#34;&#34;
-The `tiresias.core.machine_learning` module provides implementations of 
-differentially private machine learning techniques.
+The `tiresias.benchmark.regression` module evaluates a variety of different
+regression models and datasets for different epsilon values.
 &#34;&#34;&#34;
+import time
+import logging
+import warnings
 import numpy as np
-import diffprivlib.models as dp
+import pandas as pd
+from tiresias.benchmark.utils import apply_ldp
+from tiresias.core import machine_learning as ml
 
-GaussianNB = dp.GaussianNB
-LogisticRegression = dp.LogisticRegression
+from sklearn.ensemble import RandomForestRegressor
+from sklearn.datasets import fetch_california_housing, load_diabetes
+from sklearn.linear_model import LinearRegression
+from sklearn.model_selection import train_test_split
+from sklearn.svm import SVR
 
-def compute(spec, data, epsilon):
+warnings.simplefilter(action=&#39;ignore&#39;)
+logging.basicConfig()
+log = logging.getLogger(__name__)
+log.setLevel(logging.DEBUG)
+
+DATA_LOADERS = {
+    &#34;Diabetes Progression&#34;: lambda: load_diabetes(return_X_y=True),
+    &#34;California Housing Prices&#34;: lambda: fetch_california_housing(return_X_y=True),
+}
+
+def _run_sklearn(X_train, X_test, y_train, y_test, model_builder=None, N=10):
+    accuracy, running_time = [], []
+    for _ in range(N):
+        start = time.time()
+        model = model_builder()
+        model.fit(X_train, y_train)
+        accuracy.append(model.score(X_test, y_test))
+        running_time.append(time.time() - start)
+    return np.mean(accuracy), np.mean(running_time)
+
+def run_benchmark(epsilons=[10.0, 100.0], N=10):
     &#34;&#34;&#34;
-    Given the model specification and some data, train a differeentially 
-    private model.
+    This function evaluates the pre-specified models and datasets with the 
+    given epsilon values. Each model-dataset pair is evaluated N times for
+    each epsilon value and the average accuracy and running time is returned.
     &#34;&#34;&#34;
-    x = np.array([[d[var] for var in spec[&#34;inputs&#34;]] for d in data])
-    y = np.array([d[spec[&#34;output&#34;]] for d in data])
-    if spec[&#34;model&#34;] == &#34;GaussianNB&#34;:
-        clf = GaussianNB(epsilon=epsilon, bounds=spec[&#34;bounds&#34;])
-        clf.fit(x, y)
-        return clf
-    elif spec[&#34;model&#34;] == &#34;LogisticRegression&#34;:
-        clf = LogisticRegression(epsilon=epsilon, data_norm=spec[&#34;data_norm&#34;])
-        clf.fit(x, y)
-        return clf
-    else:
-        raise ValueError(spec[&#34;model&#34;])</code></pre>
+    results = []
+    for dataset_name, data_loader in DATA_LOADERS.items():
+        X, y = data_loader()
+        X_train, X_test, y_train, y_test = train_test_split(X, y)
+        
+        log.info(&#34;Loaded the %s dataset...&#34; % dataset_name)
+        log.info(&#34;Train: X = %s, Y = %s&#34; % (X_train.shape, y_train.shape))
+        log.info(&#34;Test : X = %s, Y = %s&#34; % (X_test.shape, y_test.shape))
+
+        for epsilon in epsilons:
+            # LDP Queries
+            X_dp, y_dp = apply_ldp(X_train, y_train, epsilon, is_discrete=True)
+            for model in [RandomForestRegressor, SVR, LinearRegression]:
+                log.info(&#34;Running %s (ε = %s)&#34; % (model.__name__, epsilon))
+                accuracy, running_time = _run_sklearn(X_dp, X_test, y_dp, y_test, model_builder=model)
+                log.info(&#34;Done. Acc = %.02f, Speed = %.02f&#34; % (accuracy, running_time))
+
+                results.append({
+                    &#34;dataset&#34;: dataset_name,
+                    &#34;query&#34;: &#34;bounded&#34;,
+                    &#34;model&#34;: model.__name__,
+                    &#34;epsilon&#34;: epsilon,
+                    &#34;accuracy&#34;: accuracy,
+                    &#34;running_time&#34;: running_time
+                })
+
+    return pd.DataFrame(results)</code></pre>
 </details>
 </section>
 <section>
@@ -63,33 +107,50 @@ def compute(spec, data, epsilon):
 <section>
 <h2 class="section-title" id="header-functions">Functions</h2>
 <dl>
-<dt id="tiresias.core.machine_learning.compute"><code class="name flex">
-<span>def <span class="ident">compute</span></span>(<span>spec, data, epsilon)</span>
+<dt id="tiresias.benchmark.regression.run_benchmark"><code class="name flex">
+<span>def <span class="ident">run_benchmark</span></span>(<span>epsilons=[10.0, 100.0], N=10)</span>
 </code></dt>
 <dd>
-<section class="desc"><p>Given the model specification and some data, train a differeentially
-private model.</p></section>
+<section class="desc"><p>This function evaluates the pre-specified models and datasets with the
+given epsilon values. Each model-dataset pair is evaluated N times for
+each epsilon value and the average accuracy and running time is returned.</p></section>
 <details class="source">
 <summary>
 <span>Expand source code</span>
 </summary>
-<pre><code class="python">def compute(spec, data, epsilon):
+<pre><code class="python">def run_benchmark(epsilons=[10.0, 100.0], N=10):
     &#34;&#34;&#34;
-    Given the model specification and some data, train a differeentially 
-    private model.
+    This function evaluates the pre-specified models and datasets with the 
+    given epsilon values. Each model-dataset pair is evaluated N times for
+    each epsilon value and the average accuracy and running time is returned.
     &#34;&#34;&#34;
-    x = np.array([[d[var] for var in spec[&#34;inputs&#34;]] for d in data])
-    y = np.array([d[spec[&#34;output&#34;]] for d in data])
-    if spec[&#34;model&#34;] == &#34;GaussianNB&#34;:
-        clf = GaussianNB(epsilon=epsilon, bounds=spec[&#34;bounds&#34;])
-        clf.fit(x, y)
-        return clf
-    elif spec[&#34;model&#34;] == &#34;LogisticRegression&#34;:
-        clf = LogisticRegression(epsilon=epsilon, data_norm=spec[&#34;data_norm&#34;])
-        clf.fit(x, y)
-        return clf
-    else:
-        raise ValueError(spec[&#34;model&#34;])</code></pre>
+    results = []
+    for dataset_name, data_loader in DATA_LOADERS.items():
+        X, y = data_loader()
+        X_train, X_test, y_train, y_test = train_test_split(X, y)
+        
+        log.info(&#34;Loaded the %s dataset...&#34; % dataset_name)
+        log.info(&#34;Train: X = %s, Y = %s&#34; % (X_train.shape, y_train.shape))
+        log.info(&#34;Test : X = %s, Y = %s&#34; % (X_test.shape, y_test.shape))
+
+        for epsilon in epsilons:
+            # LDP Queries
+            X_dp, y_dp = apply_ldp(X_train, y_train, epsilon, is_discrete=True)
+            for model in [RandomForestRegressor, SVR, LinearRegression]:
+                log.info(&#34;Running %s (ε = %s)&#34; % (model.__name__, epsilon))
+                accuracy, running_time = _run_sklearn(X_dp, X_test, y_dp, y_test, model_builder=model)
+                log.info(&#34;Done. Acc = %.02f, Speed = %.02f&#34; % (accuracy, running_time))
+
+                results.append({
+                    &#34;dataset&#34;: dataset_name,
+                    &#34;query&#34;: &#34;bounded&#34;,
+                    &#34;model&#34;: model.__name__,
+                    &#34;epsilon&#34;: epsilon,
+                    &#34;accuracy&#34;: accuracy,
+                    &#34;running_time&#34;: running_time
+                })
+
+    return pd.DataFrame(results)</code></pre>
 </details>
 </dd>
 </dl>
@@ -105,12 +166,12 @@ private model.</p></section>
 <ul id="index">
 <li><h3>Super-module</h3>
 <ul>
-<li><code><a title="tiresias.core" href="index.html">tiresias.core</a></code></li>
+<li><code><a title="tiresias.benchmark" href="../index.html">tiresias.benchmark</a></code></li>
 </ul>
 </li>
 <li><h3><a href="#header-functions">Functions</a></h3>
 <ul class="">
-<li><code><a title="tiresias.core.machine_learning.compute" href="#tiresias.core.machine_learning.compute">compute</a></code></li>
+<li><code><a title="tiresias.benchmark.regression.run_benchmark" href="#tiresias.benchmark.regression.run_benchmark">run_benchmark</a></code></li>
 </ul>
 </li>
 </ul>
