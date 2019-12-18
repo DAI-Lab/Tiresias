@@ -1,3 +1,4 @@
+import numpy as np
 import tiresias.core.mechanisms as dp
 
 def test_laplace_noise():
@@ -6,24 +7,24 @@ def test_laplace_noise():
     assert type(x_hat) == float
 
 def test_count():
-    x = [0.0] * 100
-    x_hat = dp.count(x, epsilon=0.1)
-    assert type(x_hat) == float
+    x = np.random.normal(size=1000)
+    x_hat = dp.count(x, epsilon=100.0)
+    assert (x_hat - len(x))**2 < 1.0
 
 def test_median():
-    x = [0.0] * 100
-    x_hat = dp.median(x, epsilon=0.1)
-    assert type(x_hat) == float
+    x = np.random.normal(size=1000)
+    x_hat = dp.median(x, epsilon=100.0)
+    assert (x_hat - np.median(x))**2 < 1.0
 
 def test_mean():
-    x = [0.0] * 100
-    x_hat = dp.mean(x, epsilon=0.1)
-    assert type(x_hat) == float
+    x = np.random.normal(size=1000)
+    x_hat = dp.mean(x, epsilon=100.0)
+    assert (x_hat - np.mean(x))**2 < 1.0
 
 def test_sum():
-    x = [0.0] * 100
-    x_hat = dp.sum(x, epsilon=0.1)
-    assert type(x_hat) == float
+    x = np.random.normal(size=1000)
+    x_hat = dp.sum(x, epsilon=100.0)
+    assert (x_hat - np.sum(x))**2 / len(x) < 1.0
 
 def test_finite_categorical_str():
     x = "hello"

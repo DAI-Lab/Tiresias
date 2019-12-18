@@ -19,23 +19,61 @@ def count(x, epsilon):
     """
     return laplace_noise(len(x), sensitivity=1, epsilon=epsilon)
 
-def median(x, epsilon):
+def median(x, epsilon, delta=None):
     """
     This function computes the differentially private estimate of the median 
-    using the smooth sensitivity approach proposed in [1]. The input to this 
-    function can be either a list or a vector.
+    using the approach proposed in [1]. It uses the Laplace mechanism on page 
+    10 and the smooth sensitivity of the median derivation found on page 12.
+    
+    The resulting value is (epsilon-delta) differentially private. By default,
+    if not specified, delta is set to `1/(100*len(x))` so that there is a 99%
+    chance that differential privacy is satisfied for any individual.
 
     [1] http://www.cse.psu.edu/~ads22/pubs/NRS07/NRS07-full-draft-v1.pdf
     """
+    if not delta:
+        delta = 1.0 / (100 * len(x))
+    alpha = epsilon / 2.0
+    beta = epsilon / (2.0 * np.log(2.0 / delta))
+    
     x = np.array(x)
     x.sort()
     m = (len(x) + 1) // 2
     smooth_sensitivity = []
-    for k in range(1, len(x)):
-        local_sensitivity = max(x[m+t] - x[m+t-k-1] for t in range(min(k, len(x)-m)))
-        smooth_sensitivity.append(np.exp(-k * epsilon) * local_sensitivity)
+    for k in range(0, len(x)-m):
+        local_sensitivity = max(x[m+t] - x[m+t-k-1] for t in range(0, k+1))
+        smooth_sensitivity.append(np.exp(-k * beta) * local_sensitivity)
     smooth_sensitivity = max(smooth_sensitivity)
-    return laplace_noise(np.median(x), sensitivity=smooth_sensitivity, epsilon=epsilon)
+    
+    return np.median(x) + smooth_sensitivity/alpha * np.random.laplace()
+
+def median_gaussian(x, epsilon, delta=None):
+    """
+    This function computes the differentially private estimate of the median 
+    using the approach proposed in [1]. It uses the Gaussian mechanism on page 
+    10 and the smooth sensitivity of the median derivation found on page 12.
+
+    The resulting value is (epsilon-delta) differentially private. By default,
+    if not specified, delta is set to `1/(100*len(x))` so that there is a 99%
+    chance that differential privacy is satisfied for any individual.
+
+    [1] http://www.cse.psu.edu/~ads22/pubs/NRS07/NRS07-full-draft-v1.pdf
+    """
+    if not delta:
+        delta = 1.0 / (100 * len(x))
+    alpha = epsilon / (5.0 * np.sqrt(2.0 * np.log(2.0/delta)))
+    beta = epsilon / (4.0 * (1.0 + np.log(2.0/delta)))
+    
+    x = np.array(x)
+    x.sort()
+    m = (len(x) + 1) // 2
+    smooth_sensitivity = []
+    for k in range(0, len(x)-m):
+        local_sensitivity = max(x[m+t] - x[m+t-k-1] for t in range(0, k+1))
+        smooth_sensitivity.append(np.exp(-k * beta) * local_sensitivity)
+    smooth_sensitivity = max(smooth_sensitivity)
+
+    return np.median(x) + smooth_sensitivity/alpha * np.random.normal()
 
 def sample_and_aggregate(x, func, epsilon, nb_partitions):
     """
