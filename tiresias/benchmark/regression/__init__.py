@@ -70,7 +70,7 @@ def run_benchmark(epsilons=[10.0, 100.0], N=10):
         for epsilon in epsilons:
             # LDP Queries
             X_dp, y_dp = apply_ldp(X_train, y_train, epsilon, is_discrete=True)
-            for model in [RandomForestRegressor, SVR, LinearRegression, dreadnought_test(input_dims=X_train.shape[1])]:
+            for model in [RandomForestRegressor, SVR, LinearRegression]:
                 log.info("Running %s (ε = %s)" % (model.__name__, epsilon))
                 accuracy, running_time = _run_sklearn(X_dp, X_test, y_dp, y_test, model_builder=model)
                 log.info("Done. Acc = %.02f, Speed = %.02f" % (accuracy, running_time))

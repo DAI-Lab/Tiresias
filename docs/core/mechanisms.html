@@ -50,23 +50,61 @@ def count(x, epsilon):
     &#34;&#34;&#34;
     return laplace_noise(len(x), sensitivity=1, epsilon=epsilon)
 
-def median(x, epsilon):
+def median(x, epsilon, delta=None):
     &#34;&#34;&#34;
     This function computes the differentially private estimate of the median 
-    using the smooth sensitivity approach proposed in [1]. The input to this 
-    function can be either a list or a vector.
+    using the approach proposed in [1]. It uses the Laplace mechanism on page 
+    10 and the smooth sensitivity of the median derivation found on page 12.
+    
+    The resulting value is (epsilon-delta) differentially private. By default,
+    if not specified, delta is set to `1/(100*len(x))` so that there is a 99%
+    chance that differential privacy is satisfied for any individual.
 
     [1] http://www.cse.psu.edu/~ads22/pubs/NRS07/NRS07-full-draft-v1.pdf
     &#34;&#34;&#34;
+    if not delta:
+        delta = 1.0 / (100 * len(x))
+    alpha = epsilon / 2.0
+    beta = epsilon / (2.0 * np.log(2.0 / delta))
+    
     x = np.array(x)
     x.sort()
     m = (len(x) + 1) // 2
     smooth_sensitivity = []
-    for k in range(1, len(x)):
-        local_sensitivity = max(x[m+t] - x[m+t-k-1] for t in range(min(k, len(x)-m)))
-        smooth_sensitivity.append(np.exp(-k * epsilon) * local_sensitivity)
+    for k in range(0, len(x)-m):
+        local_sensitivity = max(x[m+t] - x[m+t-k-1] for t in range(0, k+1))
+        smooth_sensitivity.append(np.exp(-k * beta) * local_sensitivity)
     smooth_sensitivity = max(smooth_sensitivity)
-    return laplace_noise(np.median(x), sensitivity=smooth_sensitivity, epsilon=epsilon)
+    
+    return np.median(x) + smooth_sensitivity/alpha * np.random.laplace()
+
+def median_gaussian(x, epsilon, delta=None):
+    &#34;&#34;&#34;
+    This function computes the differentially private estimate of the median 
+    using the approach proposed in [1]. It uses the Gaussian mechanism on page 
+    10 and the smooth sensitivity of the median derivation found on page 12.
+
+    The resulting value is (epsilon-delta) differentially private. By default,
+    if not specified, delta is set to `1/(100*len(x))` so that there is a 99%
+    chance that differential privacy is satisfied for any individual.
+
+    [1] http://www.cse.psu.edu/~ads22/pubs/NRS07/NRS07-full-draft-v1.pdf
+    &#34;&#34;&#34;
+    if not delta:
+        delta = 1.0 / (100 * len(x))
+    alpha = epsilon / (5.0 * np.sqrt(2.0 * np.log(2.0/delta)))
+    beta = epsilon / (4.0 * (1.0 + np.log(2.0/delta)))
+    
+    x = np.array(x)
+    x.sort()
+    m = (len(x) + 1) // 2
+    smooth_sensitivity = []
+    for k in range(0, len(x)-m):
+        local_sensitivity = max(x[m+t] - x[m+t-k-1] for t in range(0, k+1))
+        smooth_sensitivity.append(np.exp(-k * beta) * local_sensitivity)
+    smooth_sensitivity = max(smooth_sensitivity)
+
+    return np.median(x) + smooth_sensitivity/alpha * np.random.normal()
 
 def sample_and_aggregate(x, func, epsilon, nb_partitions):
     &#34;&#34;&#34;
@@ -282,34 +320,91 @@ using the smooth sensitivity and sample and aggregate approach.</p></section>
 </details>
 </dd>
 <dt id="tiresias.core.mechanisms.median"><code class="name flex">
-<span>def <span class="ident">median</span></span>(<span>x, epsilon)</span>
+<span>def <span class="ident">median</span></span>(<span>x, epsilon, delta=None)</span>
 </code></dt>
 <dd>
 <section class="desc"><p>This function computes the differentially private estimate of the median
-using the smooth sensitivity approach proposed in [1]. The input to this
-function can be either a list or a vector.</p>
+using the approach proposed in [1]. It uses the Laplace mechanism on page
+10 and the smooth sensitivity of the median derivation found on page 12.</p>
+<p>The resulting value is (epsilon-delta) differentially private. By default,
+if not specified, delta is set to <code>1/(100*len(x))</code> so that there is a 99%
+chance that differential privacy is satisfied for any individual.</p>
 <p>[1] <a href="http://www.cse.psu.edu/~ads22/pubs/NRS07/NRS07-full-draft-v1.pdf">http://www.cse.psu.edu/~ads22/pubs/NRS07/NRS07-full-draft-v1.pdf</a></p></section>
 <details class="source">
 <summary>
 <span>Expand source code</span>
 </summary>
-<pre><code class="python">def median(x, epsilon):
+<pre><code class="python">def median(x, epsilon, delta=None):
     &#34;&#34;&#34;
     This function computes the differentially private estimate of the median 
-    using the smooth sensitivity approach proposed in [1]. The input to this 
-    function can be either a list or a vector.
+    using the approach proposed in [1]. It uses the Laplace mechanism on page 
+    10 and the smooth sensitivity of the median derivation found on page 12.
+    
+    The resulting value is (epsilon-delta) differentially private. By default,
+    if not specified, delta is set to `1/(100*len(x))` so that there is a 99%
+    chance that differential privacy is satisfied for any individual.
 
     [1] http://www.cse.psu.edu/~ads22/pubs/NRS07/NRS07-full-draft-v1.pdf
     &#34;&#34;&#34;
+    if not delta:
+        delta = 1.0 / (100 * len(x))
+    alpha = epsilon / 2.0
+    beta = epsilon / (2.0 * np.log(2.0 / delta))
+    
     x = np.array(x)
     x.sort()
     m = (len(x) + 1) // 2
     smooth_sensitivity = []
-    for k in range(1, len(x)):
-        local_sensitivity = max(x[m+t] - x[m+t-k-1] for t in range(min(k, len(x)-m)))
-        smooth_sensitivity.append(np.exp(-k * epsilon) * local_sensitivity)
+    for k in range(0, len(x)-m):
+        local_sensitivity = max(x[m+t] - x[m+t-k-1] for t in range(0, k+1))
+        smooth_sensitivity.append(np.exp(-k * beta) * local_sensitivity)
     smooth_sensitivity = max(smooth_sensitivity)
-    return laplace_noise(np.median(x), sensitivity=smooth_sensitivity, epsilon=epsilon)</code></pre>
+    
+    return np.median(x) + smooth_sensitivity/alpha * np.random.laplace()</code></pre>
+</details>
+</dd>
+<dt id="tiresias.core.mechanisms.median_gaussian"><code class="name flex">
+<span>def <span class="ident">median_gaussian</span></span>(<span>x, epsilon, delta=None)</span>
+</code></dt>
+<dd>
+<section class="desc"><p>This function computes the differentially private estimate of the median
+using the approach proposed in [1]. It uses the Gaussian mechanism on page
+10 and the smooth sensitivity of the median derivation found on page 12.</p>
+<p>The resulting value is (epsilon-delta) differentially private. By default,
+if not specified, delta is set to <code>1/(100*len(x))</code> so that there is a 99%
+chance that differential privacy is satisfied for any individual.</p>
+<p>[1] <a href="http://www.cse.psu.edu/~ads22/pubs/NRS07/NRS07-full-draft-v1.pdf">http://www.cse.psu.edu/~ads22/pubs/NRS07/NRS07-full-draft-v1.pdf</a></p></section>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">def median_gaussian(x, epsilon, delta=None):
+    &#34;&#34;&#34;
+    This function computes the differentially private estimate of the median 
+    using the approach proposed in [1]. It uses the Gaussian mechanism on page 
+    10 and the smooth sensitivity of the median derivation found on page 12.
+
+    The resulting value is (epsilon-delta) differentially private. By default,
+    if not specified, delta is set to `1/(100*len(x))` so that there is a 99%
+    chance that differential privacy is satisfied for any individual.
+
+    [1] http://www.cse.psu.edu/~ads22/pubs/NRS07/NRS07-full-draft-v1.pdf
+    &#34;&#34;&#34;
+    if not delta:
+        delta = 1.0 / (100 * len(x))
+    alpha = epsilon / (5.0 * np.sqrt(2.0 * np.log(2.0/delta)))
+    beta = epsilon / (4.0 * (1.0 + np.log(2.0/delta)))
+    
+    x = np.array(x)
+    x.sort()
+    m = (len(x) + 1) // 2
+    smooth_sensitivity = []
+    for k in range(0, len(x)-m):
+        local_sensitivity = max(x[m+t] - x[m+t-k-1] for t in range(0, k+1))
+        smooth_sensitivity.append(np.exp(-k * beta) * local_sensitivity)
+    smooth_sensitivity = max(smooth_sensitivity)
+
+    return np.median(x) + smooth_sensitivity/alpha * np.random.normal()</code></pre>
 </details>
 </dd>
 <dt id="tiresias.core.mechanisms.sample_and_aggregate"><code class="name flex">
@@ -407,6 +502,7 @@ using the smooth sensitivity and sample and aggregate approach.</p></section>
 <li><code><a title="tiresias.core.mechanisms.laplace_noise" href="#tiresias.core.mechanisms.laplace_noise">laplace_noise</a></code></li>
 <li><code><a title="tiresias.core.mechanisms.mean" href="#tiresias.core.mechanisms.mean">mean</a></code></li>
 <li><code><a title="tiresias.core.mechanisms.median" href="#tiresias.core.mechanisms.median">median</a></code></li>
+<li><code><a title="tiresias.core.mechanisms.median_gaussian" href="#tiresias.core.mechanisms.median_gaussian">median_gaussian</a></code></li>
 <li><code><a title="tiresias.core.mechanisms.sample_and_aggregate" href="#tiresias.core.mechanisms.sample_and_aggregate">sample_and_aggregate</a></code></li>
 <li><code><a title="tiresias.core.mechanisms.staircase_mechanism" href="#tiresias.core.mechanisms.staircase_mechanism">staircase_mechanism</a></code></li>
 <li><code><a title="tiresias.core.mechanisms.sum" href="#tiresias.core.mechanisms.sum">sum</a></code></li>
