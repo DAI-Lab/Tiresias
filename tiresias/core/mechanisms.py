@@ -75,7 +75,7 @@ def median_gaussian(x, epsilon, delta=None):
 
     return np.median(x) + smooth_sensitivity/alpha * np.random.normal()
 
-def sample_and_aggregate(x, func, epsilon, nb_partitions):
+def sample_and_aggregate(x, func, epsilon, nb_partitions, delta=None):
     """
     This function computes the differentially private estimate of a function 
     using the sample and aggregate approach in [1]. We obtain an estimate of
@@ -87,25 +87,25 @@ def sample_and_aggregate(x, func, epsilon, nb_partitions):
     np.random.shuffle(x)
     for partition in np.array_split(x, nb_partitions):
         results.append(func(partition))
-    return median(np.array(results), epsilon)
+    return median(np.array(results), epsilon, delta=delta)
 
-def mean(x, epsilon):
+def mean(x, epsilon, delta=None):
     """
     This function computes the differentially private estimate of the average 
     using the smooth sensitivity and sample and aggregate approach.
     """
     nb_partitions = int(np.sqrt(len(x)))
-    return sample_and_aggregate(x, np.mean, epsilon, nb_partitions)
+    return sample_and_aggregate(x, np.mean, epsilon, nb_partitions, delta=delta)
 
-def sum(x, epsilon):
+def sum(x, epsilon, delta=None):
     """
     This function computes the differentially private estimate of the sum 
     using the smooth sensitivity and sample and aggregate approach.
     """
     nb_partitions = int(np.sqrt(len(x)))
-    return nb_partitions * sample_and_aggregate(x, np.sum, epsilon, nb_partitions)
+    return nb_partitions * sample_and_aggregate(x, np.sum, epsilon, nb_partitions, delta=delta)
 
-def finite_categorical(x, domain, epsilon):
+def finite_categorical(x, domain, epsilon, delta=None):
     """
     This function applies randomized response to a categorical variable. The
     input can be either a np.array or a single value. There is no restriction
@@ -130,7 +130,7 @@ def finite_categorical(x, domain, epsilon):
         return x
     return np.random.choice(list(domain))
 
-def bounded_continuous(x, low, high, epsilon):
+def bounded_continuous(x, low, high, epsilon, delta=None):
     """
     This function applies randomized response to a bounded continuous variable. 
     The input `x` can be either a np.array or a single value.

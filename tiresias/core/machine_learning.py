@@ -7,6 +7,7 @@ import diffprivlib.models as dp
 
 GaussianNB = dp.GaussianNB
 LogisticRegression = dp.LogisticRegression
+LinearRegression = dp.LinearRegression
 
 def compute(spec, data, epsilon):
     """
@@ -21,6 +22,10 @@ def compute(spec, data, epsilon):
         return clf
     elif spec["model"] == "LogisticRegression":
         clf = LogisticRegression(epsilon=epsilon, data_norm=spec["data_norm"])
+        clf.fit(x, y)
+        return clf
+    elif spec["model"] == "LinearRegression":
+        clf = LinearRegression(epsilon=epsilon, data_norm=spec["data_norm"])
         clf.fit(x, y)
         return clf
     else:
