@@ -7,6 +7,7 @@ import pandas as pd
 
 from tiresias.core import machine_learning as ml
 from tiresias.benchmark.utils import make_ldp
+from tiresias.benchmark.utils import FederatedLearningClassifier
 
 from sklearn.datasets import load_breast_cancer, load_wine
 from sklearn.model_selection import train_test_split
@@ -64,7 +65,19 @@ def benchmark(X, y):
                 "running_time": running_time
             })
             log.info("%s" % results[-1])
-    
+
+        # Federated Learning Queries
+        for model in [FederatedLearningClassifier(epsilon=epsilon, delta=1.0 / len(X), epochs=32, lr=0.01)]:
+            accuracy, running_time = run_N(X, y, model, epsilon=epsilon, delta=False, use_ldp=False)
+            results.append({
+                "type": "federated_learning",
+                "model": type(model).__name__,
+                "epsilon": epsilon,
+                "accuracy": accuracy,
+                "running_time": running_time
+            })
+            log.info("%s" % results[-1])
+
     return pd.DataFrame(results)
 
 def report():
