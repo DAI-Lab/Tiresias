@@ -106,7 +106,7 @@ def median_gaussian(x, epsilon, delta=None):
 
     return np.median(x) + smooth_sensitivity/alpha * np.random.normal()
 
-def sample_and_aggregate(x, func, epsilon, nb_partitions):
+def sample_and_aggregate(x, func, epsilon, nb_partitions, delta=None):
     &#34;&#34;&#34;
     This function computes the differentially private estimate of a function 
     using the sample and aggregate approach in [1]. We obtain an estimate of
@@ -118,25 +118,25 @@ def sample_and_aggregate(x, func, epsilon, nb_partitions):
     np.random.shuffle(x)
     for partition in np.array_split(x, nb_partitions):
         results.append(func(partition))
-    return median(np.array(results), epsilon)
+    return median(np.array(results), epsilon, delta=delta)
 
-def mean(x, epsilon):
+def mean(x, epsilon, delta=None):
     &#34;&#34;&#34;
     This function computes the differentially private estimate of the average 
     using the smooth sensitivity and sample and aggregate approach.
     &#34;&#34;&#34;
     nb_partitions = int(np.sqrt(len(x)))
-    return sample_and_aggregate(x, np.mean, epsilon, nb_partitions)
+    return sample_and_aggregate(x, np.mean, epsilon, nb_partitions, delta=delta)
 
-def sum(x, epsilon):
+def sum(x, epsilon, delta=None):
     &#34;&#34;&#34;
     This function computes the differentially private estimate of the sum 
     using the smooth sensitivity and sample and aggregate approach.
     &#34;&#34;&#34;
     nb_partitions = int(np.sqrt(len(x)))
-    return nb_partitions * sample_and_aggregate(x, np.sum, epsilon, nb_partitions)
+    return nb_partitions * sample_and_aggregate(x, np.sum, epsilon, nb_partitions, delta=delta)
 
-def finite_categorical(x, domain, epsilon):
+def finite_categorical(x, domain, epsilon, delta=None):
     &#34;&#34;&#34;
     This function applies randomized response to a categorical variable. The
     input can be either a np.array or a single value. There is no restriction
@@ -161,7 +161,7 @@ def finite_categorical(x, domain, epsilon):
         return x
     return np.random.choice(list(domain))
 
-def bounded_continuous(x, low, high, epsilon):
+def bounded_continuous(x, low, high, epsilon, delta=None):
     &#34;&#34;&#34;
     This function applies randomized response to a bounded continuous variable. 
     The input `x` can be either a np.array or a single value.
@@ -200,7 +200,7 @@ def staircase_mechanism(x, epsilon):
 <h2 class="section-title" id="header-functions">Functions</h2>
 <dl>
 <dt id="tiresias.core.mechanisms.bounded_continuous"><code class="name flex">
-<span>def <span class="ident">bounded_continuous</span></span>(<span>x, low, high, epsilon)</span>
+<span>def <span class="ident">bounded_continuous</span></span>(<span>x, low, high, epsilon, delta=None)</span>
 </code></dt>
 <dd>
 <section class="desc"><p>This function applies randomized response to a bounded continuous variable.
@@ -209,7 +209,7 @@ The input <code>x</code> can be either a np.array or a single value.</p></sectio
 <summary>
 <span>Expand source code</span>
 </summary>
-<pre><code class="python">def bounded_continuous(x, low, high, epsilon):
+<pre><code class="python">def bounded_continuous(x, low, high, epsilon, delta=None):
     &#34;&#34;&#34;
     This function applies randomized response to a bounded continuous variable. 
     The input `x` can be either a np.array or a single value.
@@ -245,7 +245,7 @@ using the Laplace mechanism.</p></section>
 </details>
 </dd>
 <dt id="tiresias.core.mechanisms.finite_categorical"><code class="name flex">
-<span>def <span class="ident">finite_categorical</span></span>(<span>x, domain, epsilon)</span>
+<span>def <span class="ident">finite_categorical</span></span>(<span>x, domain, epsilon, delta=None)</span>
 </code></dt>
 <dd>
 <section class="desc"><p>This function applies randomized response to a categorical variable. The
@@ -256,7 +256,7 @@ or a string.</p></section>
 <summary>
 <span>Expand source code</span>
 </summary>
-<pre><code class="python">def finite_categorical(x, domain, epsilon):
+<pre><code class="python">def finite_categorical(x, domain, epsilon, delta=None):
     &#34;&#34;&#34;
     This function applies randomized response to a categorical variable. The
     input can be either a np.array or a single value. There is no restriction
@@ -301,7 +301,7 @@ given the sensitivity and epsilon parameters.</p></section>
 </details>
 </dd>
 <dt id="tiresias.core.mechanisms.mean"><code class="name flex">
-<span>def <span class="ident">mean</span></span>(<span>x, epsilon)</span>
+<span>def <span class="ident">mean</span></span>(<span>x, epsilon, delta=None)</span>
 </code></dt>
 <dd>
 <section class="desc"><p>This function computes the differentially private estimate of the average
@@ -310,13 +310,13 @@ using the smooth sensitivity and sample and aggregate approach.</p></section>
 <summary>
 <span>Expand source code</span>
 </summary>
-<pre><code class="python">def mean(x, epsilon):
+<pre><code class="python">def mean(x, epsilon, delta=None):
     &#34;&#34;&#34;
     This function computes the differentially private estimate of the average 
     using the smooth sensitivity and sample and aggregate approach.
     &#34;&#34;&#34;
     nb_partitions = int(np.sqrt(len(x)))
-    return sample_and_aggregate(x, np.mean, epsilon, nb_partitions)</code></pre>
+    return sample_and_aggregate(x, np.mean, epsilon, nb_partitions, delta=delta)</code></pre>
 </details>
 </dd>
 <dt id="tiresias.core.mechanisms.median"><code class="name flex">
@@ -408,7 +408,7 @@ chance that differential privacy is satisfied for any individual.</p>
 </details>
 </dd>
 <dt id="tiresias.core.mechanisms.sample_and_aggregate"><code class="name flex">
-<span>def <span class="ident">sample_and_aggregate</span></span>(<span>x, func, epsilon, nb_partitions)</span>
+<span>def <span class="ident">sample_and_aggregate</span></span>(<span>x, func, epsilon, nb_partitions, delta=None)</span>
 </code></dt>
 <dd>
 <section class="desc"><p>This function computes the differentially private estimate of a function
@@ -419,7 +419,7 @@ the differentially private median to aggregate the results.</p></section>
 <summary>
 <span>Expand source code</span>
 </summary>
-<pre><code class="python">def sample_and_aggregate(x, func, epsilon, nb_partitions):
+<pre><code class="python">def sample_and_aggregate(x, func, epsilon, nb_partitions, delta=None):
     &#34;&#34;&#34;
     This function computes the differentially private estimate of a function 
     using the sample and aggregate approach in [1]. We obtain an estimate of
@@ -431,7 +431,7 @@ the differentially private median to aggregate the results.</p></section>
     np.random.shuffle(x)
     for partition in np.array_split(x, nb_partitions):
         results.append(func(partition))
-    return median(np.array(results), epsilon)</code></pre>
+    return median(np.array(results), epsilon, delta=delta)</code></pre>
 </details>
 </dd>
 <dt id="tiresias.core.mechanisms.staircase_mechanism"><code class="name flex">
@@ -460,7 +460,7 @@ the differentially private median to aggregate the results.</p></section>
 </details>
 </dd>
 <dt id="tiresias.core.mechanisms.sum"><code class="name flex">
-<span>def <span class="ident">sum</span></span>(<span>x, epsilon)</span>
+<span>def <span class="ident">sum</span></span>(<span>x, epsilon, delta=None)</span>
 </code></dt>
 <dd>
 <section class="desc"><p>This function computes the differentially private estimate of the sum
@@ -469,13 +469,13 @@ using the smooth sensitivity and sample and aggregate approach.</p></section>
 <summary>
 <span>Expand source code</span>
 </summary>
-<pre><code class="python">def sum(x, epsilon):
+<pre><code class="python">def sum(x, epsilon, delta=None):
     &#34;&#34;&#34;
     This function computes the differentially private estimate of the sum 
     using the smooth sensitivity and sample and aggregate approach.
     &#34;&#34;&#34;
     nb_partitions = int(np.sqrt(len(x)))
-    return nb_partitions * sample_and_aggregate(x, np.sum, epsilon, nb_partitions)</code></pre>
+    return nb_partitions * sample_and_aggregate(x, np.sum, epsilon, nb_partitions, delta=delta)</code></pre>
 </details>
 </dd>
 </dl>

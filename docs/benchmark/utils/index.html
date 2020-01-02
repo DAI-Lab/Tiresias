@@ -4,9 +4,8 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, minimum-scale=1" />
 <meta name="generator" content="pdoc 0.7.1" />
-<title>tiresias.benchmark API documentation</title>
-<meta name="description" content="The `tiresias.benchmark` module provides an integrated framework for measuring
-the performance of the different differential privacy mechanisms …" />
+<title>tiresias.benchmark.utils API documentation</title>
+<meta name="description" content="" />
 <link href='https://cdnjs.cloudflare.com/ajax/libs/normalize/8.0.0/normalize.min.css' rel='stylesheet'>
 <link href='https://cdnjs.cloudflare.com/ajax/libs/10up-sanitize.css/8.0.0/sanitize.min.css' rel='stylesheet'>
 <link href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/9.12.0/styles/github.min.css" rel="stylesheet">
@@ -18,37 +17,25 @@ the performance of the different differential privacy mechanisms …" />
 <main>
 <article id="content">
 <header>
-<h1 class="title">Module <code>tiresias.benchmark</code></h1>
+<h1 class="title">Module <code>tiresias.benchmark.utils</code></h1>
 </header>
 <section id="section-intro">
-<p>The <a title="tiresias.benchmark" href="#tiresias.benchmark"><code>tiresias.benchmark</code></a> module provides an integrated framework for measuring
-the performance of the different differential privacy mechanisms supported by
-the <a title="tiresias" href="../index.html"><code>tiresias</code></a> library. It provides the tools to simulate an environment for a
-variety of different data science and machine learning queries.</p>
 <details class="source">
 <summary>
 <span>Expand source code</span>
 </summary>
-<pre><code class="python">&#34;&#34;&#34;
-The `tiresias.benchmark` module provides an integrated framework for measuring
-the performance of the different differential privacy mechanisms supported by 
-the `tiresias` library. It provides the tools to simulate an environment for a
-variety of different data science and machine learning queries.
-&#34;&#34;&#34;</code></pre>
+<pre><code class="python">from tiresias.benchmark.utils.local_dp import make_ldp
+from tiresias.benchmark.utils.wrapper import FederatedLearningClassifier, FederatedLearningRegressor</code></pre>
 </details>
 </section>
 <section>
 <h2 class="section-title" id="header-submodules">Sub-modules</h2>
 <dl>
-<dt><code class="name"><a title="tiresias.benchmark.classification" href="classification.html">tiresias.benchmark.classification</a></code></dt>
+<dt><code class="name"><a title="tiresias.benchmark.utils.local_dp" href="local_dp.html">tiresias.benchmark.utils.local_dp</a></code></dt>
 <dd>
 <section class="desc"></section>
 </dd>
-<dt><code class="name"><a title="tiresias.benchmark.regression" href="regression.html">tiresias.benchmark.regression</a></code></dt>
-<dd>
-<section class="desc"></section>
-</dd>
-<dt><code class="name"><a title="tiresias.benchmark.utils" href="utils/index.html">tiresias.benchmark.utils</a></code></dt>
+<dt><code class="name"><a title="tiresias.benchmark.utils.wrapper" href="wrapper.html">tiresias.benchmark.utils.wrapper</a></code></dt>
 <dd>
 <section class="desc"></section>
 </dd>
@@ -69,14 +56,13 @@ variety of different data science and machine learning queries.
 <ul id="index">
 <li><h3>Super-module</h3>
 <ul>
-<li><code><a title="tiresias" href="../index.html">tiresias</a></code></li>
+<li><code><a title="tiresias.benchmark" href="../index.html">tiresias.benchmark</a></code></li>
 </ul>
 </li>
 <li><h3><a href="#header-submodules">Sub-modules</a></h3>
 <ul>
-<li><code><a title="tiresias.benchmark.classification" href="classification.html">tiresias.benchmark.classification</a></code></li>
-<li><code><a title="tiresias.benchmark.regression" href="regression.html">tiresias.benchmark.regression</a></code></li>
-<li><code><a title="tiresias.benchmark.utils" href="utils/index.html">tiresias.benchmark.utils</a></code></li>
+<li><code><a title="tiresias.benchmark.utils.local_dp" href="local_dp.html">tiresias.benchmark.utils.local_dp</a></code></li>
+<li><code><a title="tiresias.benchmark.utils.wrapper" href="wrapper.html">tiresias.benchmark.utils.wrapper</a></code></li>
 </ul>
 </li>
 </ul>

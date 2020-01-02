@@ -8,12 +8,12 @@ def _ldp(x, epsilon, delta, continuous=True):
     else:
         return mechanisms.finite_categorical(x, set(x), epsilon=epsilon, delta=delta)
 
-def make_ldp(X, y, epsilon, delta):
+def make_ldp(X, y, epsilon, delta, classification=True):
     num_rows, num_cols = X.shape
     assert X.shape[0] == y.shape[0]
 
     X, y = X.copy(), y.copy()
     for col_idx in range(0, num_cols):
         X[:,col_idx] = _ldp(X[:,col_idx], epsilon / (2 * X.shape[1]), delta / (2 * X.shape[1]))
-    y = _ldp(y, epsilon / 2.0, delta / 2.0, continuous=False)
+    y = _ldp(y, epsilon / 2.0, delta / 2.0, continuous=not classification)
     return X, y

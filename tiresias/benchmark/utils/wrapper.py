@@ -1,7 +1,7 @@
 import torch
 import numpy as np
 import tiresias.core.mechanisms as mechanisms
-from sklearn.base import ClassifierMixin
+from sklearn.base import ClassifierMixin, RegressorMixin
 from tiresias.core.federated_learning import get_gradients, put_gradients, merge_gradients
 
 class FederatedLearningWrapper(object):
@@ -72,6 +72,34 @@ class FederatedLearningClassifier(ClassifierMixin):
         y_pred = self._model.predict(X)
         y_pred = np.argmax(y_pred, axis=1)
         return [self._i_to_class[i] for i in y_pred]
+
+class FederatedLearningRegressor(RegressorMixin):
+
+    def __init__(self, epsilon, delta, epochs, lr):
+        self.epsilon = epsilon
+        self.delta = delta
+        self.epochs = epochs
+        self.lr = lr
+
+    def fit(self, X, y):
+        self._model = FederatedLearningWrapper(
+            model=torch.nn.Sequential(
+                torch.nn.Linear(X.shape[1], 16),
+                torch.nn.ReLU(inplace=True),
+                torch.nn.Linear(16, 1),
+            ),
+            loss=torch.nn.functional.mse_loss, 
+            epsilon=self.epsilon, 
+            delta=self.delta,
+            epochs=self.epochs, 
+            lr=self.lr,
+            batch_size=128,
+        )
+        self._model.fit(X, y)
+
+    def predict(self, X):
+        y_pred = self._model.predict(X)
+        return y_pred
 
 if __name__ == "__main__":
     from sklearn.datasets import load_breast_cancer
