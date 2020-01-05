@@ -9,7 +9,7 @@ from tiresias.core import machine_learning as ml
 from tiresias.benchmark.utils import make_ldp
 from tiresias.benchmark.utils import FederatedLearningClassifier
 
-from sklearn.datasets import load_breast_cancer, load_wine
+from sklearn.datasets import *
 from sklearn.model_selection import train_test_split
 from sklearn.linear_model import LogisticRegression
 from sklearn.ensemble import RandomForestClassifier
@@ -41,7 +41,7 @@ def run_N(X, y, model, epsilon, delta, N=20, use_ldp=True):
 
 def benchmark(X, y):
     results = []
-    for epsilon in [1.0, 10.0, 100.0, 1000.0]:
+    for epsilon in [10.0, 100.0, 1000.0]:
         # Bounded Queries
         for model in [LogisticRegression(), RandomForestClassifier(), SVC()]:
             accuracy, running_time = run_N(X, y, model, epsilon=epsilon, delta=False, use_ldp=True)
@@ -84,6 +84,8 @@ def report():
     datasets = [
         ("Wine", load_wine(return_X_y=True)),
         ("Breast Cancer", load_breast_cancer(return_X_y=True)),
+        ("Forest Cover", fetch_covtype(return_X_y=True)),
+        ("KDDCup99", fetch_kddcup99(return_X_y=True))
     ]
 
     dfs = []

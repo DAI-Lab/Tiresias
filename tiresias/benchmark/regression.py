@@ -9,7 +9,7 @@ from tiresias.core import machine_learning as ml
 from tiresias.benchmark.utils import make_ldp
 from tiresias.benchmark.utils import FederatedLearningRegressor
 
-from sklearn.datasets import load_diabetes, fetch_california_housing
+from sklearn.datasets import *
 from sklearn.model_selection import train_test_split
 from sklearn.linear_model import LinearRegression
 from sklearn.ensemble import RandomForestRegressor
@@ -82,8 +82,9 @@ def benchmark(X, y):
 
 def report():
     datasets = [
+        ("Boston Housing", load_boston(return_X_y=True)),
         ("Diabetes Progression", load_diabetes(return_X_y=True)),
-        ("California Housing Prices", fetch_california_housing(return_X_y=True)),
+        ("California Housing", fetch_california_housing(return_X_y=True)),
     ]
 
     dfs = []
