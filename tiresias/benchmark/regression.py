@@ -13,7 +13,8 @@ from sklearn.datasets import *
 from sklearn.model_selection import train_test_split
 from sklearn.linear_model import LinearRegression
 from sklearn.ensemble import RandomForestRegressor
-from sklearn.svm import SVR
+from sklearn.svm import LinearSVR
+from sklearn.metrics import mean_squared_error
 
 warnings.simplefilter(action='ignore')
 logging.basicConfig()
@@ -25,11 +26,13 @@ def run(X, y, model, epsilon, delta, use_ldp):
 
     X_train, X_test, y_train, y_test = train_test_split(X, y)
     if use_ldp:
+        y_train_raw = y_train
         X_train, y_train = make_ldp(X_train, y_train, epsilon, delta, classification=False)
+        log.info("LDP (e=%s): MSE %s | Range [%s, %s]" % (epsilon, mean_squared_error(y_train, y_train_raw), np.min(y_train), np.max(y_train)))
     model.fit(X_train, y_train)
     
     running_time = time.time() - start
-    return model.score(X_test, y_test), running_time
+    return mean_squared_error(y_test, model.predict(X_test)), running_time
 
 def run_N(X, y, model, epsilon, delta, N=20, use_ldp=True):
     accuracies, running_times = [], []
@@ -43,7 +46,7 @@ def benchmark(X, y):
     results = []
     for epsilon in [10.0, 100.0, 1000.0]:
         # Bounded Queries
-        for model in [LinearRegression(), RandomForestRegressor(), SVR()]:
+        for model in [LinearRegression(), RandomForestRegressor(), LinearSVR()]:
             accuracy, running_time = run_N(X, y, model, epsilon=epsilon, delta=False, use_ldp=True)
             results.append({
                 "type": "bounded",
@@ -80,7 +83,7 @@ def benchmark(X, y):
 
     return pd.DataFrame(results)
 
-def report():
+def report(csv):
     datasets = [
         ("Boston Housing", load_boston(return_X_y=True)),
         ("Diabetes Progression", load_diabetes(return_X_y=True)),
@@ -93,15 +96,16 @@ def report():
         df = benchmark(X, y)
         df["dataset"] = dataset
         dfs.append(df)
+        pd.concat(dfs).to_csv(csv)
     df = pd.concat(dfs)
 
-    return df.set_index(["dataset", "epsilon", "type", "model",])
+    df = df.set_index(["dataset", "epsilon", "type", "model",])
+    df.to_csv(args.csv)
+    return df
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument('--csv', type=str, default="classification.csv")
+    parser.add_argument('--csv', type=str, default="regression.csv")
     args = parser.parse_args()
-
-    df = report()
-    df.to_csv(args.csv)
+    df = report(args.csv)
     print(df)

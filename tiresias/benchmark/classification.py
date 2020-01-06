@@ -13,7 +13,7 @@ from sklearn.datasets import *
 from sklearn.model_selection import train_test_split
 from sklearn.linear_model import LogisticRegression
 from sklearn.ensemble import RandomForestClassifier
-from sklearn.svm import SVC
+from sklearn.svm import LinearSVC
 
 warnings.simplefilter(action='ignore')
 logging.basicConfig()
@@ -43,7 +43,7 @@ def benchmark(X, y):
     results = []
     for epsilon in [10.0, 100.0, 1000.0]:
         # Bounded Queries
-        for model in [LogisticRegression(), RandomForestClassifier(), SVC()]:
+        for model in [LogisticRegression(), RandomForestClassifier(), LinearSVC()]:
             accuracy, running_time = run_N(X, y, model, epsilon=epsilon, delta=False, use_ldp=True)
             results.append({
                 "type": "bounded",
@@ -80,7 +80,7 @@ def benchmark(X, y):
 
     return pd.DataFrame(results)
 
-def report():
+def report(csv):
     datasets = [
         ("Wine", load_wine(return_X_y=True)),
         ("Breast Cancer", load_breast_cancer(return_X_y=True)),
@@ -94,15 +94,16 @@ def report():
         df = benchmark(X, y)
         df["dataset"] = dataset
         dfs.append(df)
+        pd.concat(dfs).to_csv(csv)
     df = pd.concat(dfs)
 
-    return df.set_index(["dataset", "epsilon", "type", "model"])
+    df = df.set_index(["dataset", "epsilon", "type", "model"])
+    df.to_csv(args.csv)
+    return df
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument('--csv', type=str, default="classification.csv")
     args = parser.parse_args()
-    
-    df = report()
-    df.to_csv(args.csv)
+    df = report(args.csv)
     print(df)
