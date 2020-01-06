@@ -81,31 +81,32 @@ def aggregate(spec, weights, list_of_gradients):
     optimizer.step()
     return model
 
-def get_gradients(model, epsilon, delta=0.01):
+def get_gradients(model, epsilon, delta=0.01, max_norm=1.0):
     """
     This function extracts a differentially private copy of the gradients 
     from a PyTorch model where the loss has already been backpropagated through
     the neural network.
     """
-    # Clip the gradient
-    max_norm = 1.0
+    scale = np.sqrt(2 * np.log(1.25 / delta)) / epsilon
+
+    # Compute the gradient norm
     total_norm = 0.0
     for p in model.parameters():
-        param_norm = p.grad.data.norm(2)
-        total_norm += param_norm.item() ** 2
+        if p.requires_grad:
+            total_norm += p.grad.data.norm(2).item() ** 2
     total_norm = total_norm ** (1. / 2)
-    for p in model.parameters():
-        p.grad.data = p.grad.data / max(1.0, total_norm / max_norm)
 
-    # Add noise to the gradient
-    scale = np.sqrt(2 * np.log(1.25 / delta)) / epsilon
-    for p in model.parameters():
-        p.grad.data += torch.normal(torch.zeros(p.grad.data.size()), torch.zeros(p.grad.data.size()) + (scale**2) * (max_norm**2))
-    
-    # Return a list containing the gradients
+    # Clip and add noise
     gradients = []
     for p in model.parameters():
-        gradients.append(p.grad.data.clone())
+        if p.requires_grad:
+            grad = p.grad.data.clone()
+            grad /= max(1.0, total_norm / max_norm)
+            grad += torch.normal(
+                torch.zeros(p.grad.data.size()), 
+                torch.zeros(p.grad.data.size()) + scale * max_norm
+            )
+            gradients.append(grad)
     return gradients
 
 def put_gradients(model, gradients):
@@ -114,7 +115,8 @@ def put_gradients(model, gradients):
     function and loads them back into the model.
     """
     for p, g in zip(model.parameters(), gradients):
-        p.grad = g
+        if p.requires_grad:
+            p.grad = g
 
 def merge_gradients(list_of_gradients):
     """

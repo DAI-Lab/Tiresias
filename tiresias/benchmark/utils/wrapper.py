@@ -1,6 +1,7 @@
 import torch
 import numpy as np
 import tiresias.core.mechanisms as mechanisms
+from tqdm import tqdm
 from sklearn.base import ClassifierMixin, RegressorMixin
 from tiresias.core.federated_learning import get_gradients, put_gradients, merge_gradients
 
@@ -19,12 +20,12 @@ class FederatedLearningWrapper(object):
         optimizer = torch.optim.Adam(self.model.parameters(), lr=self.lr)
         epsilon = self.epsilon / self.epochs
         delta = self.delta / self.epochs
-        for epoch in range(self.epochs):
+        for epoch in tqdm(range(self.epochs)):
             gradients = []
-            for i in range(X.shape[0]):
+            for i in range(len(X)):
                 self.model.zero_grad()
-                x = torch.FloatTensor([X[i]])
-                y = torch.tensor([Y[i]])
+                x = torch.FloatTensor(X[i]).unsqueeze(0)
+                y = torch.tensor(Y[i]).unsqueeze(0)
                 loss = self.loss(self.model(x), y)
                 loss.backward()
                 gradients.append(get_gradients(self.model, epsilon, delta))
@@ -35,8 +36,8 @@ class FederatedLearningWrapper(object):
 
     def predict(self, X):
         Y = []
-        for i in range(X.shape[0]):
-            x = torch.FloatTensor([X[i]])
+        for i in range(len(X)):
+            x = torch.FloatTensor(X[i]).unsqueeze(0)
             y = self.model(x)[0]
             Y.append(y.detach().numpy())
         return np.stack(Y)

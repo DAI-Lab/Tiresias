@@ -32,7 +32,7 @@ def median(x, epsilon, delta=None):
     [1] http://www.cse.psu.edu/~ads22/pubs/NRS07/NRS07-full-draft-v1.pdf
     """
     if not delta:
-        delta = 1.0 / (100 * len(x))
+        delta = 1.0 / len(x)
     alpha = epsilon / 2.0
     beta = epsilon / (2.0 * np.log(2.0 / delta))
     
@@ -60,7 +60,7 @@ def median_gaussian(x, epsilon, delta=None):
     [1] http://www.cse.psu.edu/~ads22/pubs/NRS07/NRS07-full-draft-v1.pdf
     """
     if not delta:
-        delta = 1.0 / (100 * len(x))
+        delta = 1.0 / len(x)
     alpha = epsilon / (5.0 * np.sqrt(2.0 * np.log(2.0/delta)))
     beta = epsilon / (4.0 * (1.0 + np.log(2.0/delta)))
     
