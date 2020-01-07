@@ -14,7 +14,8 @@ from sklearn.model_selection import train_test_split
 from sklearn.linear_model import LinearRegression
 from sklearn.ensemble import RandomForestRegressor
 from sklearn.svm import LinearSVR
-from sklearn.metrics import mean_squared_error
+from sklearn.metrics import r2_score
+from sklearn.preprocessing import RobustScaler, StandardScaler
 
 warnings.simplefilter(action='ignore')
 logging.basicConfig()
@@ -28,11 +29,11 @@ def run(X, y, model, epsilon, delta, use_ldp):
     if use_ldp:
         y_train_raw = y_train
         X_train, y_train = make_ldp(X_train, y_train, epsilon, delta, classification=False)
-        log.info("LDP (e=%s): MSE %s | Range [%s, %s]" % (epsilon, mean_squared_error(y_train, y_train_raw), np.min(y_train), np.max(y_train)))
+        log.info("LDP (e=%s): R^2 %s | [%s, %s]" % (epsilon, r2_score(y_train, y_train_raw), np.min(y_train), np.max(y_train)))
     model.fit(X_train, y_train)
     
     running_time = time.time() - start
-    return mean_squared_error(y_test, model.predict(X_test)), running_time
+    return r2_score(y_test, model.predict(X_test)), running_time
 
 def run_N(X, y, model, epsilon, delta, N=20, use_ldp=True):
     accuracies, running_times = [], []
@@ -43,6 +44,9 @@ def run_N(X, y, model, epsilon, delta, N=20, use_ldp=True):
     return np.mean(accuracies), np.mean(running_times)
 
 def benchmark(X, y):
+    X = RobustScaler().fit_transform(X)
+    y = StandardScaler().fit_transform(y.reshape(-1,1))[:,0]
+
     results = []
     for epsilon in [10.0, 100.0, 1000.0]:
         # Bounded Queries

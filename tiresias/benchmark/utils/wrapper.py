@@ -3,7 +3,6 @@ import numpy as np
 import tiresias.core.mechanisms as mechanisms
 from tqdm import tqdm
 from sklearn.base import ClassifierMixin, RegressorMixin
-from sklearn.preprocessing import RobustScaler, StandardScaler
 from tiresias.core.federated_learning import get_gradients, put_gradients, merge_gradients
 
 class FederatedLearningWrapper(object):
@@ -18,8 +17,6 @@ class FederatedLearningWrapper(object):
         self.batch_size = batch_size
 
     def fit(self, X, Y):
-        self.input_transform = RobustScaler()
-        X = self.input_transform.fit_transform(X)
         optimizer = torch.optim.Adam(self.model.parameters(), lr=self.lr)
         epsilon = self.epsilon / self.epochs
         delta = self.delta / self.epochs
@@ -38,7 +35,6 @@ class FederatedLearningWrapper(object):
                     gradients = []
 
     def predict(self, X):
-        X = self.input_transform.transform(X)
         Y = []
         for i in range(len(X)):
             x = torch.FloatTensor(X[i]).unsqueeze(0)
@@ -87,9 +83,6 @@ class FederatedLearningRegressor(RegressorMixin):
         self.lr = lr
 
     def fit(self, X, y):
-        self.output_transform = StandardScaler()
-        y = self.output_transform.fit_transform(y.reshape(-1, 1))[:,0]
-
         self._model = FederatedLearningWrapper(
             model=torch.nn.Sequential(
                 torch.nn.Linear(X.shape[1], 16),
@@ -107,7 +100,7 @@ class FederatedLearningRegressor(RegressorMixin):
 
     def predict(self, X):
         y_pred = self._model.predict(X)
-        return self.output_transform.inverse_transform(y_pred)
+        return y_pred
 
 if __name__ == "__main__":
     from sklearn.datasets import load_boston

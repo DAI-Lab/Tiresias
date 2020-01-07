@@ -14,6 +14,7 @@ from sklearn.model_selection import train_test_split
 from sklearn.linear_model import LogisticRegression
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.svm import LinearSVC
+from sklearn.preprocessing import RobustScaler, StandardScaler
 
 warnings.simplefilter(action='ignore')
 logging.basicConfig()
@@ -40,6 +41,8 @@ def run_N(X, y, model, epsilon, delta, N=20, use_ldp=True):
     return np.mean(accuracies), np.mean(running_times)
 
 def benchmark(X, y):
+    X = RobustScaler().fit_transform(X)
+
     results = []
     for epsilon in [10.0, 100.0, 1000.0]:
         # Bounded Queries
