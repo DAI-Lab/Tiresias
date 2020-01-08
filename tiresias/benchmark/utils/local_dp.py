@@ -12,8 +12,9 @@ def make_ldp(X, y, epsilon, delta, classification=True):
     num_rows, num_cols = X.shape
     assert X.shape[0] == y.shape[0]
 
+    p = 0.5 # use 70% of budget for X, 30% for Y
     X, y = X.copy(), y.copy()
     for col_idx in range(0, num_cols):
-        X[:,col_idx] = _ldp(X[:,col_idx], epsilon / (2 * X.shape[1]), delta / (2 * X.shape[1]))
-    y = _ldp(y, epsilon / 2.0, delta / 2.0, continuous=not classification)
+        X[:,col_idx] = _ldp(X[:,col_idx], p * epsilon / X.shape[1], p * delta / X.shape[1])
+    y = _ldp(y, (1.0 - p) * epsilon, (1.0 - p) * delta, continuous=not classification)
     return X, y

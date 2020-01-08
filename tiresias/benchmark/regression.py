@@ -20,7 +20,7 @@ from sklearn.preprocessing import RobustScaler, StandardScaler
 warnings.simplefilter(action='ignore')
 logging.basicConfig()
 log = logging.getLogger(__name__)
-log.setLevel(logging.DEBUG)
+log.setLevel(logging.INFO)
 
 def run(X, y, model, epsilon, delta, use_ldp):
     start = time.time()
@@ -29,7 +29,7 @@ def run(X, y, model, epsilon, delta, use_ldp):
     if use_ldp:
         y_train_raw = y_train
         X_train, y_train = make_ldp(X_train, y_train, epsilon, delta, classification=False)
-        log.info("LDP (e=%s): R^2 %s | [%s, %s]" % (epsilon, r2_score(y_train, y_train_raw), np.min(y_train), np.max(y_train)))
+        log.debug("Baseline R^2: %s" % r2_score(y_train_raw, y_train))
     model.fit(X_train, y_train)
     
     running_time = time.time() - start
@@ -48,7 +48,7 @@ def benchmark(X, y):
     y = StandardScaler().fit_transform(y.reshape(-1,1))[:,0]
 
     results = []
-    for epsilon in [10.0, 100.0, 1000.0]:
+    for epsilon in [16.0, 32.0, 64.0]:
         # Bounded Queries
         for model in [LinearRegression(), RandomForestRegressor(), LinearSVR()]:
             accuracy, running_time = run_N(X, y, model, epsilon=epsilon, delta=False, use_ldp=True)
