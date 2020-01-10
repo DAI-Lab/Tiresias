@@ -25,7 +25,7 @@ def compute(spec, data, epsilon):
         clf.fit(x, y)
         return clf
     elif spec["model"] == "LinearRegression":
-        clf = LinearRegression(epsilon=epsilon, data_norm=spec["data_norm"])
+        clf = LinearRegression(epsilon=epsilon)
         clf.fit(x, y)
         return clf
     else:

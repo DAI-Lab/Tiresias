@@ -4,6 +4,7 @@ underlying SQLite databases.
 """
 import os
 import sqlite3
+from random import random
 
 def dict_factory(cursor, row):
     """
@@ -41,6 +42,24 @@ def initialize(data_dir):
     """)
     cursor.close()
     connection.close()
+
+def create_dummy_dataset(data_dir):
+    register_app(data_dir, "hello_world", {
+        "two_sum": {
+            "description": "A simple dataset for addition.",
+            "columns": {
+                "x1": {"type": "float", "description": "The first value to add."},
+                "x2": {"type": "float", "description": "The second value to add."},
+                "y": {"type": "float", "description": "The sum of the values."},
+            }
+        }
+    })
+    x1, x2 = random() * 100.0, random() * 10.0
+    insert_payload(data_dir, "hello_world", {
+        "two_sum": [
+            {"x1": x1, "x2": x2, "y": x1 + x2},
+        ]
+    })
 
 def app_columns(data_dir):
     """

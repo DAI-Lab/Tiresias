@@ -13,9 +13,9 @@ import threading
 import urllib.parse
 from time import sleep
 from json import loads, dumps
-import tiresias.server as remote
+from tiresias.server import api as remote_api
 from tiresias.client.handler import handle
-from tiresias.client.storage import initialize, app_columns, execute_sql, register_app, insert_payload
+from tiresias.client.storage import initialize, create_dummy_dataset, app_columns, execute_sql, register_app, insert_payload
 
 def run(server="http://localhost:3000", data_dir="/tmp/tiresias", port=8000):
     """
@@ -41,6 +41,7 @@ def storage_server(data_dir="/tmp/tiresias", port=8000):
     
     api = Bottle()
     initialize(data_dir)
+    create_dummy_dataset(data_dir)
     api.config['data_dir'] = data_dir
 
     @api.route("/")
@@ -93,12 +94,12 @@ def query_handler(server, data_dir):
     handled = set()
     while True:
         try:
-            for query_id, query in remote.api.list_queries(server).items():
+            for query_id, query in remote_api.list_queries(server).items():
                 if query_id in handled:
                     continue
                 result = handle(query, data_dir)
-                remote.api.approve_query(server, query_id, result)
+                remote_api.approve_query(server, query_id, result)
                 handled.add(query_id)
         except requests.exceptions.ConnectionError:
             print("Server at %s is offline." % server)
-        sleep(0.5)
+        sleep(1.0)

@@ -159,7 +159,7 @@ For example, consider a simple Gaussian Naive Bayes query where the inputs and
 outputs are `[x1, x2]` and `y` respectively.
 ```
 query_id = api.create_query("http://<server_ip>:3000/", {
-    "type": "federated_learning",
+    "type": "machine_learning",
     "epsilon": 10.0,
     "featurizer": "SELECT x1, x2, y FROM example_app.tableA",
     "aggregator": {

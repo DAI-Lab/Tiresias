@@ -218,7 +218,7 @@ def test_server_client_with_fl(tmpdir):
         }
         query["weights"] = b64_encode(fl.random_weights(query["aggregator"]))
         query_id = server.api.create_query("http://localhost:3000/", query)
-        sleep(1)
+        sleep(2)
 
         # Check that the client responded to the query
         queries = server.api.list_queries("http://localhost:3000/")

@@ -11,6 +11,7 @@ import threading
 import numpy as np
 import tiresias.worker as worker
 from time import sleep
+from time import time
 from json import loads, dumps
 
 def run(port=3000):
@@ -36,6 +37,7 @@ def run(port=3000):
         query = loads(request.params.get("query"))
         query["id"] = query_id
         query["status"] = "PENDING"
+        query["start"] = time()
         queries[query_id] = query
         payloads[query_id] = []
         return str(query_id)
@@ -50,16 +52,21 @@ def run(port=3000):
         payload = loads(request.params.get("payload"))
         payloads[query_id].append(payload)
         query["count"] = len(payloads[query_id])
-        query["status"] = "RUNNING"
+        if "min_sample_size" not in query or query["count"] >= query["min_sample_size"]:
+            query["status"] = "RUNNING"
         return ""
 
     api_thread = threading.Thread(target=api.run, kwargs={"port": port})
     api_thread.start()
     while api_thread.is_alive():
         for qid in queries.keys():
+            if queries[qid]["status"] != "RUNNING":
+                continue
             try:
                 queries[qid]["result"] = worker.handle(queries[qid], payloads[qid])
                 queries[qid]["status"] = "COMPLETE"
-            except:
+                queries[qid]["end"] = time()
+            except Exception as e:
                 print("Query failed: %s" % queries[qid])
+                print(e)
         sleep(0.1)
