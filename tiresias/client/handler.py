@@ -12,15 +12,19 @@ def handle(query, data_dir):
     handler. It's also responsbile for extracting the correct features from the 
     given data directory.
     """
-    dispatcher = {
-        "basic": handle_basic,
-        "bounded": handle_bounded,
-        "machine_learning": handle_ml,
-        "federated_learning": handle_fl
-    }
-    func = dispatcher.get(query["type"], lambda: ValueError("Unknown query type."))
-    data = execute_sql(data_dir, query["featurizer"])
-    return func(query, data)
+    try:
+        dispatcher = {
+            "basic": handle_basic,
+            "bounded": handle_bounded,
+            "machine_learning": handle_ml,
+            "federated_learning": handle_fl
+        }
+        func = dispatcher.get(query["type"], lambda: ValueError("Unknown query type."))
+        data = execute_sql(data_dir, query["featurizer"])
+        return func(query, data)
+    except:
+        print("Query failed.")
+        return None
 
 def handle_basic(query, data):
     """

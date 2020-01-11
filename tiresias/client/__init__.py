@@ -13,6 +13,7 @@ import threading
 import urllib.parse
 from time import sleep
 from json import loads, dumps
+from random import random
 from tiresias.server import api as remote_api
 from tiresias.client.handler import handle
 from tiresias.client.storage import initialize, create_dummy_dataset, app_columns, execute_sql, register_app, insert_payload
@@ -24,9 +25,11 @@ def run(server="http://localhost:3000", data_dir="/tmp/tiresias", port=8000):
     """
     storage_thread = threading.Thread(target=storage_server, args=(data_dir, port))
     storage_thread.start()
+    sleep(0.1)
 
     query_thread = threading.Thread(target=query_handler, args=(server, data_dir))
     query_thread.start()
+    sleep(0.1)
 
     storage_thread.join()
     query_thread.join()
@@ -98,8 +101,10 @@ def query_handler(server, data_dir):
                 if query_id in handled:
                     continue
                 result = handle(query, data_dir)
-                remote_api.approve_query(server, query_id, result)
+                if result:
+                    remote_api.approve_query(server, query_id, result)
                 handled.add(query_id)
         except requests.exceptions.ConnectionError:
             print("Server at %s is offline." % server)
-        sleep(1.0)
+            sleep(0.1)
+        sleep(0.5 + random())

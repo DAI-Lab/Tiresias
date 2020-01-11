@@ -43,7 +43,8 @@ def test_approve_query():
             "type": "basic",
             "epsilon": 100.0,
             "featurizer": "SELECT sum(some_var) FROM example_app.tableA",
-            "aggregator": "mean"
+            "aggregator": "mean",
+            "min_sample_size": 10,
         })
         queries = server.api.list_queries("http://localhost:3000/")
         assert len(queries) == 1
@@ -55,9 +56,11 @@ def test_approve_query():
         sleep(1)
 
         queries = server.api.list_queries("http://localhost:3000/")
-        assert len(queries) == 1
-        assert queries[query_id]["id"] == query_id
-        assert abs(queries[query_id]["result"] - 100.0) < 10.0
+        assert len(queries) == 0, "The query should no longer be publically listed"
+
+        query = server.api.fetch_query("http://localhost:3000/", query_id)
+        assert query["id"] == query_id
+        assert abs(query["result"] - 100.0) < 10.0
 
     finally:
         api_server.terminate()
@@ -105,9 +108,11 @@ def test_server_client_basic(tmpdir):
 
         # Check that the client responded to the query
         queries = server.api.list_queries("http://localhost:3000/")
-        assert len(queries) == 1
-        assert queries[query_id]["id"] == query_id
-        assert queries[query_id]["count"] == 1 # One data point
+        assert len(queries) == 0, "The query should no longer be publically listed"
+
+        query = server.api.fetch_query("http://localhost:3000/", query_id)
+        assert query["id"] == query_id
+        assert query["count"] == 1 # One data point
 
     finally:
         client_server.terminate()
@@ -148,7 +153,8 @@ def test_server_client_with_values(tmpdir):
             "type": "basic",
             "epsilon": 10000.0,
             "featurizer": "SELECT avg(some_var) FROM example_app.tableA",
-            "aggregator": "mean"
+            "aggregator": "mean",
+            "min_sample_size": 10,
         })
         sleep(1)
 
@@ -159,10 +165,7 @@ def test_server_client_with_values(tmpdir):
 
         # Check that the client responded to the query
         queries = server.api.list_queries("http://localhost:3000/")
-        assert len(queries) == 1
-        assert queries[query_id]["id"] == query_id
-        assert queries[query_id]["count"] == 10 # One "real" point + 9 patched ones
-        assert abs(queries[query_id]["result"] - 100.0) < 1.0 # One data point
+        assert len(queries) == 0, "The query should no longer be publically listed"
 
         # Check that the client responded to the query (direct)
         query = server.api.fetch_query("http://localhost:3000/", query_id)
@@ -222,11 +225,14 @@ def test_server_client_with_fl(tmpdir):
 
         # Check that the client responded to the query
         queries = server.api.list_queries("http://localhost:3000/")
-        assert len(queries) == 1
-        assert queries[query_id]["id"] == query_id
-        assert queries[query_id]["count"] == 1 # One "real" point
+        assert len(queries) == 0, "The query should no longer be publically listed"
 
-        model = b64_decode(queries[query_id]["result"])
+        # Check that the client responded to the query (direct)
+        query = server.api.fetch_query("http://localhost:3000/", query_id)
+        assert query["id"] == query_id
+        assert query["count"] == 1 # One "real" point
+
+        model = b64_decode(query["result"])
         assert type(model) == type(torch.nn.Linear(1, 1))
 
     finally:
