@@ -1,9 +1,11 @@
-"""
-The `tiresias.core.mechanisms` module provides low-level implementations of 
-differential privacy mechanisms such as the Laplace mechanism, 
-sample-and-aggregate, and the staircase mechanism.
-"""
 import numpy as np
+
+def count(x, epsilon, delta):
+    """
+    This function computes the differentially private estimate of the count 
+    using the Laplace mechanism.
+    """
+    return laplace_noise(len(x), sensitivity=1, epsilon=epsilon)
 
 def laplace_noise(x, sensitivity, epsilon):
     """
@@ -12,14 +14,7 @@ def laplace_noise(x, sensitivity, epsilon):
     """
     return np.random.laplace(loc=x, scale=sensitivity/epsilon)
 
-def count(x, epsilon):
-    """
-    This function computes the differentially private estimate of the count 
-    using the Laplace mechanism.
-    """
-    return laplace_noise(len(x), sensitivity=1, epsilon=epsilon)
-
-def median(x, epsilon, delta=None):
+def median(x, epsilon, delta):
     """
     This function computes the differentially private estimate of the median 
     using the approach proposed in [1]. It uses the Laplace mechanism on page 
@@ -31,8 +26,6 @@ def median(x, epsilon, delta=None):
 
     [1] http://www.cse.psu.edu/~ads22/pubs/NRS07/NRS07-full-draft-v1.pdf
     """
-    if not delta:
-        delta = 1.0 / len(x)
     alpha = epsilon / 2.0
     beta = epsilon / (2.0 * np.log(2.0 / delta))
     
@@ -47,7 +40,7 @@ def median(x, epsilon, delta=None):
     
     return np.median(x) + smooth_sensitivity/alpha * np.random.laplace()
 
-def median_gaussian(x, epsilon, delta=None):
+def median_gaussian(x, epsilon, delta):
     """
     This function computes the differentially private estimate of the median 
     using the approach proposed in [1]. It uses the Gaussian mechanism on page 
@@ -59,8 +52,6 @@ def median_gaussian(x, epsilon, delta=None):
 
     [1] http://www.cse.psu.edu/~ads22/pubs/NRS07/NRS07-full-draft-v1.pdf
     """
-    if not delta:
-        delta = 1.0 / len(x)
     alpha = epsilon / (5.0 * np.sqrt(2.0 * np.log(2.0/delta)))
     beta = epsilon / (4.0 * (1.0 + np.log(2.0/delta)))
     
@@ -75,7 +66,7 @@ def median_gaussian(x, epsilon, delta=None):
 
     return np.median(x) + smooth_sensitivity/alpha * np.random.normal()
 
-def sample_and_aggregate(x, func, epsilon, nb_partitions, delta=None):
+def sample_and_aggregate(x, func, epsilon, nb_partitions, delta):
     """
     This function computes the differentially private estimate of a function 
     using the sample and aggregate approach in [1]. We obtain an estimate of
@@ -87,25 +78,25 @@ def sample_and_aggregate(x, func, epsilon, nb_partitions, delta=None):
     np.random.shuffle(x)
     for partition in np.array_split(x, nb_partitions):
         results.append(func(partition))
-    return median(np.array(results), epsilon, delta=delta)
+    return median(np.array(results), epsilon, delta)
 
-def mean(x, epsilon, delta=None):
+def mean(x, epsilon, delta):
     """
     This function computes the differentially private estimate of the average 
     using the smooth sensitivity and sample and aggregate approach.
     """
     nb_partitions = int(np.sqrt(len(x)))
-    return sample_and_aggregate(x, np.mean, epsilon, nb_partitions, delta=delta)
+    return sample_and_aggregate(x, np.mean, epsilon, nb_partitions, delta)
 
-def sum(x, epsilon, delta=None):
+def sum(x, epsilon, delta):
     """
     This function computes the differentially private estimate of the sum 
     using the smooth sensitivity and sample and aggregate approach.
     """
     nb_partitions = int(np.sqrt(len(x)))
-    return nb_partitions * sample_and_aggregate(x, np.sum, epsilon, nb_partitions, delta=delta)
+    return nb_partitions * sample_and_aggregate(x, np.sum, epsilon, nb_partitions, delta)
 
-def finite_categorical(x, domain, epsilon, delta=None):
+def finite_categorical(x, domain, epsilon):
     """
     This function applies randomized response to a categorical variable. The
     input can be either a np.array or a single value. There is no restriction
@@ -130,7 +121,7 @@ def finite_categorical(x, domain, epsilon, delta=None):
         return x
     return np.random.choice(list(domain))
 
-def bounded_continuous(x, low, high, epsilon, delta=None):
+def bounded_continuous(x, low, high, epsilon):
     """
     This function applies randomized response to a bounded continuous variable. 
     The input `x` can be either a np.array or a single value.
@@ -145,17 +136,3 @@ def bounded_continuous(x, low, high, epsilon, delta=None):
     if epsilon == float("inf"):
         return x
     return x + np.random.laplace(scale=(high-low)/epsilon)
-
-def staircase_mechanism(x, epsilon):
-    """
-    This function implements the staircase mechanism from [2] for local differential privacy.
-
-    [2] https://arxiv.org/pdf/1212.1186.pdf
-    """
-    delta, gamma = 1.0, 0.5
-    S = np.random.choice([-1.0, 1.0])
-    G = np.random.geometric(np.exp(-epsilon))
-    U = np.random.uniform()
-    B = np.random.binomial(n=1, p=((1 - gamma)*np.exp(-epsilon)) / (gamma + (1 - gamma)*np.exp(-epsilon)))
-    noise = S * ((1-B)*((G + gamma*U)*delta) + B * ((G + gamma + (1 - gamma) * U) * delta))
-    return x + noise

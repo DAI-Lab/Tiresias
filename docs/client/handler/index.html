@@ -4,8 +4,8 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, minimum-scale=1" />
 <meta name="generator" content="pdoc 0.7.1" />
-<title>tiresias API documentation</title>
-<meta name="description" content="An open source system for privacy preserving machine learning …" />
+<title>tiresias.client.handler API documentation</title>
+<meta name="description" content="" />
 <link href='https://cdnjs.cloudflare.com/ajax/libs/normalize/8.0.0/normalize.min.css' rel='stylesheet'>
 <link href='https://cdnjs.cloudflare.com/ajax/libs/10up-sanitize.css/8.0.0/sanitize.min.css' rel='stylesheet'>
 <link href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/9.12.0/styles/github.min.css" rel="stylesheet">
@@ -17,99 +17,53 @@
 <main>
 <article id="content">
 <header>
-<h1 class="title">Module <code>tiresias</code></h1>
+<h1 class="title">Module <code>tiresias.client.handler</code></h1>
 </header>
 <section id="section-intro">
-<p>An open source system for privacy preserving machine learning.</p>
-<h2 id="usage">Usage</h2>
-<p>To get started with <code>Tiresias</code>, run the following commands to install the library.</p>
-<pre><code>pip install -e .
-pytest
-</code></pre>
-<h3 id="platform-maintainer">Platform Maintainer</h3>
-<p>To launch the <em>platform server</em>, run the below command and note your server's IP address.</p>
-<blockquote>
-<p>tiresias-server &ndash;port 3000</p>
-</blockquote>
-<p>If you navigate to <code>&lt;http://&lt;SERVER_IP&gt;&gt;:3000/</code> in your web browser, you'll see a list of open
-tasks. This list will initially be empty - we will demonstrate how you can submit tasks to
-the platform in a later section.</p>
-<h3 id="data-contributor">Data Contributor</h3>
-<p>Now that your platform server is up and running, you can ask your <em>data contributors</em> to
-launch the <em>user client</em> and point it at your server with the below command.</p>
-<blockquote>
-<p>tiresias &ndash;server <a href="http://localhost:3000/">http://localhost:3000/</a></p>
-</blockquote>
-<p>The <em>user client</em> comes with a few built-in dummy datasets that you can play with; however,
-it's up to the <em>data contributors</em> to choose what additional data collection applications
-they want to install (i.e. an app that tracks screen time).</p>
-<p>The <em>user client</em> automatically opens the user interface in your default web browser. The
-user interface will show you any open tasks that you can choose to contribute to, as well
-as a list of the columns that are being collected in your personal data store.</p>
-<h3 id="data-requestor">Data Requestor</h3>
-<p>Now that you have both the <em>platform server</em> and one or more <em>user clients</em> up and running,
-we can start writing tasks using the Tiresias Python API. Here's an example of a basic task
-which estimates the median values of the <code>malic_acid</code> field in the included <code>wine</code> dataset.</p>
-<pre><code>from tiresias.server import remote
-query_id = remote.create_task(&quot;http://localhost:3000/&quot;, {
-    &quot;type&quot;: &quot;basic&quot;,
-    &quot;epsilon&quot;: 16.0,
-    &quot;delta&quot;: 1e-5,
-    &quot;min_count&quot;: 10,
-    &quot;featurizer&quot;: &quot;SELECT malic_acid FROM dummy.wine&quot;,
-    &quot;aggregator&quot;: &quot;median&quot;
-})
-print(remote.fetch_task(server, query_id))
-</code></pre>
-<p>Note that this task requires a minimum of 10 users to complete; however, even if you don't
-have that many users, you can still track the progress of the task using either the Python
-API or the web application.</p>
-<h2 id="benchmarking">Benchmarking</h2>
-<h3 id="basic-benchmarks">Basic Benchmarks</h3>
-<ol>
-<li>Assume we have 10 clients.</li>
-<li>Shard the dataset over the 10 clients.</li>
-<li>Evaluate the different types of regression / classification queries.</li>
-</ol>
-<h3 id="scalability">Scalability</h3>
-<ol>
-<li>Assume we have N clients.</li>
-<li>Randomly sample from the dataset over the N clients.</li>
-<li>Time the different types of regression / classification queries.</li>
-</ol>
-<h3 id="transfer-learning">Transfer Learning</h3>
-<ol>
-<li>Assume we have N clients.</li>
-<li>Shard the dataset over the N clients. # how do we store images?</li>
-<li>Run the image fine-tuning model.</li>
-</ol>
-<h3 id="git-usage-analysis">Git Usage Analysis</h3>
-<ol>
-<li>For each github user, simulate a client.</li>
-<li>Compute some statistics.</li>
-<li>Train a model to predict pull requests.</li>
-</ol>
 <details class="source">
 <summary>
 <span>Expand source code</span>
 </summary>
-<pre><code class="python">&#34;&#34;&#34;
-.. include:: ../README.md
-&#34;&#34;&#34;</code></pre>
+<pre><code class="python">from tiresias.client.storage import execute_sql
+from tiresias.client.handler.basic import handle_basic
+from tiresias.client.handler.bounded import handle_bounded
+from tiresias.client.handler.integrated import handle_integrated
+from tiresias.client.handler.gradient import handle_gradient
+
+def handle_task(storage_dir, task):
+    dispatcher = {
+        &#34;basic&#34;: handle_basic,
+        &#34;bounded&#34;: handle_bounded,
+        &#34;integrated&#34;: handle_integrated,
+        &#34;gradient&#34;: handle_gradient,
+    }
+    if task[&#34;type&#34;] not in dispatcher:
+        return None, ValueError(&#34;Unknown query type.&#34;)
+    func = dispatcher[task[&#34;type&#34;]]
+
+    try:
+        data = execute_sql(storage_dir, task[&#34;featurizer&#34;])
+        return func(task, data), None
+    except Exception as e:
+        return None, e</code></pre>
 </details>
 </section>
 <section>
 <h2 class="section-title" id="header-submodules">Sub-modules</h2>
 <dl>
-<dt><code class="name"><a title="tiresias.client" href="client/index.html">tiresias.client</a></code></dt>
+<dt><code class="name"><a title="tiresias.client.handler.basic" href="basic.html">tiresias.client.handler.basic</a></code></dt>
 <dd>
 <section class="desc"></section>
 </dd>
-<dt><code class="name"><a title="tiresias.core" href="core/index.html">tiresias.core</a></code></dt>
+<dt><code class="name"><a title="tiresias.client.handler.bounded" href="bounded.html">tiresias.client.handler.bounded</a></code></dt>
 <dd>
 <section class="desc"></section>
 </dd>
-<dt><code class="name"><a title="tiresias.server" href="server/index.html">tiresias.server</a></code></dt>
+<dt><code class="name"><a title="tiresias.client.handler.gradient" href="gradient.html">tiresias.client.handler.gradient</a></code></dt>
+<dd>
+<section class="desc"></section>
+</dd>
+<dt><code class="name"><a title="tiresias.client.handler.integrated" href="integrated.html">tiresias.client.handler.integrated</a></code></dt>
 <dd>
 <section class="desc"></section>
 </dd>
@@ -118,6 +72,36 @@ API or the web application.</p>
 <section>
 </section>
 <section>
+<h2 class="section-title" id="header-functions">Functions</h2>
+<dl>
+<dt id="tiresias.client.handler.handle_task"><code class="name flex">
+<span>def <span class="ident">handle_task</span></span>(<span>storage_dir, task)</span>
+</code></dt>
+<dd>
+<section class="desc"></section>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">def handle_task(storage_dir, task):
+    dispatcher = {
+        &#34;basic&#34;: handle_basic,
+        &#34;bounded&#34;: handle_bounded,
+        &#34;integrated&#34;: handle_integrated,
+        &#34;gradient&#34;: handle_gradient,
+    }
+    if task[&#34;type&#34;] not in dispatcher:
+        return None, ValueError(&#34;Unknown query type.&#34;)
+    func = dispatcher[task[&#34;type&#34;]]
+
+    try:
+        data = execute_sql(storage_dir, task[&#34;featurizer&#34;])
+        return func(task, data), None
+    except Exception as e:
+        return None, e</code></pre>
+</details>
+</dd>
+</dl>
 </section>
 <section>
 </section>
@@ -125,28 +109,25 @@ API or the web application.</p>
 <nav id="sidebar">
 <h1>Index</h1>
 <div class="toc">
-<ul>
-<li><a href="#usage">Usage</a><ul>
-<li><a href="#platform-maintainer">Platform Maintainer</a></li>
-<li><a href="#data-contributor">Data Contributor</a></li>
-<li><a href="#data-requestor">Data Requestor</a></li>
-</ul>
-</li>
-<li><a href="#benchmarking">Benchmarking</a><ul>
-<li><a href="#basic-benchmarks">Basic Benchmarks</a></li>
-<li><a href="#scalability">Scalability</a></li>
-<li><a href="#transfer-learning">Transfer Learning</a></li>
-<li><a href="#git-usage-analysis">Git Usage Analysis</a></li>
-</ul>
-</li>
-</ul>
+<ul></ul>
 </div>
 <ul id="index">
+<li><h3>Super-module</h3>
+<ul>
+<li><code><a title="tiresias.client" href="../index.html">tiresias.client</a></code></li>
+</ul>
+</li>
 <li><h3><a href="#header-submodules">Sub-modules</a></h3>
 <ul>
-<li><code><a title="tiresias.client" href="client/index.html">tiresias.client</a></code></li>
-<li><code><a title="tiresias.core" href="core/index.html">tiresias.core</a></code></li>
-<li><code><a title="tiresias.server" href="server/index.html">tiresias.server</a></code></li>
+<li><code><a title="tiresias.client.handler.basic" href="basic.html">tiresias.client.handler.basic</a></code></li>
+<li><code><a title="tiresias.client.handler.bounded" href="bounded.html">tiresias.client.handler.bounded</a></code></li>
+<li><code><a title="tiresias.client.handler.gradient" href="gradient.html">tiresias.client.handler.gradient</a></code></li>
+<li><code><a title="tiresias.client.handler.integrated" href="integrated.html">tiresias.client.handler.integrated</a></code></li>
+</ul>
+</li>
+<li><h3><a href="#header-functions">Functions</a></h3>
+<ul class="">
+<li><code><a title="tiresias.client.handler.handle_task" href="#tiresias.client.handler.handle_task">handle_task</a></code></li>
 </ul>
 </li>
 </ul>

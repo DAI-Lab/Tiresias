@@ -5,8 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, minimum-scale=1" />
 <meta name="generator" content="pdoc 0.7.1" />
 <title>tiresias.client API documentation</title>
-<meta name="description" content="The `tiresias.client` module is responsible for (1) providing a local personal
-data store and (2) performing computations necessary for differential …" />
+<meta name="description" content="" />
 <link href='https://cdnjs.cloudflare.com/ajax/libs/normalize/8.0.0/normalize.min.css' rel='stylesheet'>
 <link href='https://cdnjs.cloudflare.com/ajax/libs/10up-sanitize.css/8.0.0/sanitize.min.css' rel='stylesheet'>
 <link href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/9.12.0/styles/github.min.css" rel="stylesheet">
@@ -21,79 +20,67 @@ data store and (2) performing computations necessary for differential …" />
 <h1 class="title">Module <code>tiresias.client</code></h1>
 </header>
 <section id="section-intro">
-<p>The <a title="tiresias.client" href="#tiresias.client"><code>tiresias.client</code></a> module is responsible for (1) providing a local personal
-data store and (2) performing computations necessary for differential privacy
-upon request. At the top-level, this module provides functions for (1) running
-a storage server which provides a REST API for applications to store data in
-the personal data store and (2) starting a thread which periodically looks for
-queries that the user can contribute to and performs the computations that are
-needed to securely contribute to them.</p>
 <details class="source">
 <summary>
 <span>Expand source code</span>
 </summary>
-<pre><code class="python">&#34;&#34;&#34;
-The `tiresias.client` module is responsible for (1) providing a local personal 
-data store and (2) performing computations necessary for differential privacy 
-upon request. At the top-level, this module provides functions for (1) running 
-a storage server which provides a REST API for applications to store data in
-the personal data store and (2) starting a thread which periodically looks for 
-queries that the user can contribute to and performs the computations that are
-needed to securely contribute to them.
-&#34;&#34;&#34;
-# pylint: disable=no-member
+<pre><code class="python">import os
 import requests
 import threading
 import urllib.parse
 from time import sleep
 from json import loads, dumps
-import tiresias.server as remote
-from tiresias.client.handler import handle
-from tiresias.client.storage import initialize, app_columns, execute_sql, register_app, insert_payload
+from random import random, randint
+from bottle import Bottle, request, response, static_file
+import tiresias.server as server
+import tiresias.server.remote
+from tiresias.client.handler import handle_task
+from tiresias.client.storage import initialize, app_columns, register_app, insert_payload
 
-def run(server=&#34;http://localhost:3000&#34;, data_dir=&#34;/tmp/tiresias&#34;, port=8000):
-    &#34;&#34;&#34;
-    This function launches the storage server and query handler on different 
-    threads and blocks forever.
-    &#34;&#34;&#34;
-    storage_thread = threading.Thread(target=storage_server, args=(data_dir, port))
+def run(server_url, storage_dir, storage_port, policy):
+    whitelist = set()
+
+    storage_thread = threading.Thread(target=storage_server, args=(storage_dir, storage_port, server_url, whitelist))
     storage_thread.start()
+    sleep(0.1)
 
-    query_thread = threading.Thread(target=query_handler, args=(server, data_dir))
-    query_thread.start()
+    handler_thread = threading.Thread(target=task_handler, args=(server_url, storage_dir, whitelist, policy))
+    handler_thread.start()
+    sleep(0.1)
 
     storage_thread.join()
-    query_thread.join()
+    handler_thread.join()
 
-def storage_server(data_dir=&#34;/tmp/tiresias&#34;, port=8000):
-    &#34;&#34;&#34;
-    This function launches the storage server. It stores the SQLite databases 
-    in the given data directory and listens on the given port. Helper functions
-    for interacting with this API are provided under `tiresias.client.api`.
-    &#34;&#34;&#34;
-    from bottle import Bottle, request, response
-    
+def storage_server(storage_dir, storage_port, server_url, whitelist):
     api = Bottle()
-    initialize(data_dir)
-    api.config[&#39;data_dir&#39;] = data_dir
+    initialize(storage_dir)
+    create_dummy_dataset(storage_dir)
+    api.config[&#39;storage_dir&#39;] = storage_dir
 
     @api.route(&#34;/&#34;)
     def _index():
+        root = os.path.dirname(__file__)
+        return static_file(&#39;client.html&#39;, root=root)
+
+    @api.route(&#34;/tasks&#34;)
+    def _tasks():
+        tasks = tiresias.server.remote.list_tasks(server_url)
+        response.content_type = &#34;application/json&#34;
+        for task_id, task in tasks.items():
+            task[&#34;accepted&#34;] = task_id in whitelist
+        return tasks
+
+    @api.route(&#34;/whitelist/&lt;task_id&gt;&#34;)
+    def _whitelist_task(task_id):
+        whitelist.add(task_id)
+        return &#34;&#34;
+
+    @api.route(&#34;/app&#34;)
+    def _app():
         &#34;&#34;&#34;
         This REST endpoint returns a JSON array containing a list of the columns stored on the device.
         &#34;&#34;&#34;
-        rows = app_columns(api.config[&#39;data_dir&#39;])
-        response.content_type = &#34;application/json&#34;
-        return dumps(rows, indent=2)
-
-    @api.route(&#34;/query&#34;)
-    def _query():
-        &#34;&#34;&#34;
-        This REST endpoint accepts a `sql` parameter which contains the SQL query. It attaches all the
-        application databases to the primary metadata database and executes the query. Note that this 
-        endpoint does not perform any security checks.
-        &#34;&#34;&#34;
-        rows = execute_sql(api.config[&#39;data_dir&#39;], request.params.get(&#34;sql&#34;))
+        rows = app_columns(api.config[&#39;storage_dir&#39;])
         response.content_type = &#34;application/json&#34;
         return dumps(rows, indent=2)
 
@@ -104,7 +91,7 @@ def storage_server(data_dir=&#34;/tmp/tiresias&#34;, port=8000):
         `schema` parameter is a JSON object.
         &#34;&#34;&#34;
         schema = loads(request.params.get(&#34;schema&#34;))
-        register_app(api.config[&#39;data_dir&#39;], app_name, schema)
+        register_app(api.config[&#39;storage_dir&#39;], app_name, schema)
         return &#34;&#34;
 
     @api.route(&#34;/app/&lt;app_name&gt;/insert&#34;)
@@ -114,40 +101,62 @@ def storage_server(data_dir=&#34;/tmp/tiresias&#34;, port=8000):
         object in the `payload` field.
         &#34;&#34;&#34;
         payload = loads(request.params.get(&#34;payload&#34;))
-        insert_payload(api.config[&#39;data_dir&#39;], app_name, payload)
+        insert_payload(api.config[&#39;storage_dir&#39;], app_name, payload)
         return &#34;&#34;
 
-    api.run(host=&#34;localhost&#34;, port=port)
+    api.run(host=&#34;localhost&#34;, port=storage_port, quiet=True)
 
-def query_handler(server, data_dir):
-    &#34;&#34;&#34;
-    This function launches the query handler. It repeatedly asks the server for
-    new queries to process and then processes them.
-    &#34;&#34;&#34;
-    handled = set()
+def task_handler(server_url, storage_dir, whitelist, policy):
+    processed = set()
     while True:
         try:
-            for query_id, query in remote.api.list_queries(server).items():
-                if query_id in handled:
+            tasks = server.remote.list_tasks(server_url)
+            for id, task in tasks.items():
+                if id in processed:
                     continue
-                result = handle(query, data_dir)
-                remote.api.approve_query(server, query_id, result)
-                handled.add(query_id)
+                if id in whitelist or policy == &#34;accept&#34;:
+                    result, err = handle_task(storage_dir, task)
+                    if not err:
+                        server.remote.approve_task(server_url, id, result)
+                    else:
+                        print(err)
+                    processed.add(id)
         except requests.exceptions.ConnectionError:
-            print(&#34;Server at %s is offline.&#34; % server)
-        sleep(0.5)</code></pre>
+            print(&#34;The server at %s is offline; retrying in 1s.&#34; % server_url)
+            sleep(1.0)
+        sleep(0.5 + random())
+
+def create_dummy_dataset(storage_dir):
+    from sklearn.datasets import load_wine
+    
+    wine_dataset = load_wine()
+    wine_dataset.feature_names = [k.replace(&#34;/&#34;, &#34;_&#34;) for k in wine_dataset.feature_names]
+
+    register_app(storage_dir, &#34;dummy&#34;, {
+        &#34;wine&#34;: {
+            &#34;description&#34;: &#34;Rows sampled from the Wine classification dataset.&#34;,
+            &#34;columns&#34;: {x: {&#34;type&#34;: &#34;float&#34;, &#34;description&#34;: x} for x in wine_dataset.feature_names}
+        }
+    })
+
+    i = randint(0, len(wine_dataset.data)-1)
+    insert_payload(storage_dir, &#34;dummy&#34;, {
+        &#34;wine&#34;: [
+            {k: v for k, v in zip(wine_dataset.feature_names, wine_dataset.data[i])}
+        ]
+    })</code></pre>
 </details>
 </section>
 <section>
 <h2 class="section-title" id="header-submodules">Sub-modules</h2>
 <dl>
-<dt><code class="name"><a title="tiresias.client.api" href="api.html">tiresias.client.api</a></code></dt>
+<dt><code class="name"><a title="tiresias.client.handler" href="handler/index.html">tiresias.client.handler</a></code></dt>
+<dd>
+<section class="desc"></section>
+</dd>
+<dt><code class="name"><a title="tiresias.client.remote" href="remote.html">tiresias.client.remote</a></code></dt>
 <dd>
 <section class="desc"><p>This module provides helper functions for calling the REST API.</p></section>
-</dd>
-<dt><code class="name"><a title="tiresias.client.handler" href="handler.html">tiresias.client.handler</a></code></dt>
-<dd>
-<section class="desc"><p>This module provides functions for handling different types of queries.</p></section>
 </dd>
 <dt><code class="name"><a title="tiresias.client.storage" href="storage.html">tiresias.client.storage</a></code></dt>
 <dd>
@@ -161,100 +170,105 @@ underlying SQLite databases.</p></section>
 <section>
 <h2 class="section-title" id="header-functions">Functions</h2>
 <dl>
-<dt id="tiresias.client.query_handler"><code class="name flex">
-<span>def <span class="ident">query_handler</span></span>(<span>server, data_dir)</span>
+<dt id="tiresias.client.create_dummy_dataset"><code class="name flex">
+<span>def <span class="ident">create_dummy_dataset</span></span>(<span>storage_dir)</span>
 </code></dt>
 <dd>
-<section class="desc"><p>This function launches the query handler. It repeatedly asks the server for
-new queries to process and then processes them.</p></section>
+<section class="desc"></section>
 <details class="source">
 <summary>
 <span>Expand source code</span>
 </summary>
-<pre><code class="python">def query_handler(server, data_dir):
-    &#34;&#34;&#34;
-    This function launches the query handler. It repeatedly asks the server for
-    new queries to process and then processes them.
-    &#34;&#34;&#34;
-    handled = set()
-    while True:
-        try:
-            for query_id, query in remote.api.list_queries(server).items():
-                if query_id in handled:
-                    continue
-                result = handle(query, data_dir)
-                remote.api.approve_query(server, query_id, result)
-                handled.add(query_id)
-        except requests.exceptions.ConnectionError:
-            print(&#34;Server at %s is offline.&#34; % server)
-        sleep(0.5)</code></pre>
+<pre><code class="python">def create_dummy_dataset(storage_dir):
+    from sklearn.datasets import load_wine
+    
+    wine_dataset = load_wine()
+    wine_dataset.feature_names = [k.replace(&#34;/&#34;, &#34;_&#34;) for k in wine_dataset.feature_names]
+
+    register_app(storage_dir, &#34;dummy&#34;, {
+        &#34;wine&#34;: {
+            &#34;description&#34;: &#34;Rows sampled from the Wine classification dataset.&#34;,
+            &#34;columns&#34;: {x: {&#34;type&#34;: &#34;float&#34;, &#34;description&#34;: x} for x in wine_dataset.feature_names}
+        }
+    })
+
+    i = randint(0, len(wine_dataset.data)-1)
+    insert_payload(storage_dir, &#34;dummy&#34;, {
+        &#34;wine&#34;: [
+            {k: v for k, v in zip(wine_dataset.feature_names, wine_dataset.data[i])}
+        ]
+    })</code></pre>
 </details>
 </dd>
-<dt id="tiresias.client.run"><code class="name flex">
-<span>def <span class="ident">run</span></span>(<span>server='http://localhost:3000', data_dir='/tmp/tiresias', port=8000)</span>
+<dt id="tiresias.client.random"><code class="name flex">
+<span>def <span class="ident">random</span></span>(<span>...)</span>
 </code></dt>
 <dd>
-<section class="desc"><p>This function launches the storage server and query handler on different
-threads and blocks forever.</p></section>
+<section class="desc"><p>random() -&gt; x in the interval [0, 1).</p></section>
+</dd>
+<dt id="tiresias.client.run"><code class="name flex">
+<span>def <span class="ident">run</span></span>(<span>server_url, storage_dir, storage_port, policy)</span>
+</code></dt>
+<dd>
+<section class="desc"></section>
 <details class="source">
 <summary>
 <span>Expand source code</span>
 </summary>
-<pre><code class="python">def run(server=&#34;http://localhost:3000&#34;, data_dir=&#34;/tmp/tiresias&#34;, port=8000):
-    &#34;&#34;&#34;
-    This function launches the storage server and query handler on different 
-    threads and blocks forever.
-    &#34;&#34;&#34;
-    storage_thread = threading.Thread(target=storage_server, args=(data_dir, port))
-    storage_thread.start()
+<pre><code class="python">def run(server_url, storage_dir, storage_port, policy):
+    whitelist = set()
 
-    query_thread = threading.Thread(target=query_handler, args=(server, data_dir))
-    query_thread.start()
+    storage_thread = threading.Thread(target=storage_server, args=(storage_dir, storage_port, server_url, whitelist))
+    storage_thread.start()
+    sleep(0.1)
+
+    handler_thread = threading.Thread(target=task_handler, args=(server_url, storage_dir, whitelist, policy))
+    handler_thread.start()
+    sleep(0.1)
 
     storage_thread.join()
-    query_thread.join()</code></pre>
+    handler_thread.join()</code></pre>
 </details>
 </dd>
 <dt id="tiresias.client.storage_server"><code class="name flex">
-<span>def <span class="ident">storage_server</span></span>(<span>data_dir='/tmp/tiresias', port=8000)</span>
+<span>def <span class="ident">storage_server</span></span>(<span>storage_dir, storage_port, server_url, whitelist)</span>
 </code></dt>
 <dd>
-<section class="desc"><p>This function launches the storage server. It stores the SQLite databases
-in the given data directory and listens on the given port. Helper functions
-for interacting with this API are provided under <a title="tiresias.client.api" href="api.html"><code>tiresias.client.api</code></a>.</p></section>
+<section class="desc"></section>
 <details class="source">
 <summary>
 <span>Expand source code</span>
 </summary>
-<pre><code class="python">def storage_server(data_dir=&#34;/tmp/tiresias&#34;, port=8000):
-    &#34;&#34;&#34;
-    This function launches the storage server. It stores the SQLite databases 
-    in the given data directory and listens on the given port. Helper functions
-    for interacting with this API are provided under `tiresias.client.api`.
-    &#34;&#34;&#34;
-    from bottle import Bottle, request, response
-    
+<pre><code class="python">def storage_server(storage_dir, storage_port, server_url, whitelist):
     api = Bottle()
-    initialize(data_dir)
-    api.config[&#39;data_dir&#39;] = data_dir
+    initialize(storage_dir)
+    create_dummy_dataset(storage_dir)
+    api.config[&#39;storage_dir&#39;] = storage_dir
 
     @api.route(&#34;/&#34;)
     def _index():
+        root = os.path.dirname(__file__)
+        return static_file(&#39;client.html&#39;, root=root)
+
+    @api.route(&#34;/tasks&#34;)
+    def _tasks():
+        tasks = tiresias.server.remote.list_tasks(server_url)
+        response.content_type = &#34;application/json&#34;
+        for task_id, task in tasks.items():
+            task[&#34;accepted&#34;] = task_id in whitelist
+        return tasks
+
+    @api.route(&#34;/whitelist/&lt;task_id&gt;&#34;)
+    def _whitelist_task(task_id):
+        whitelist.add(task_id)
+        return &#34;&#34;
+
+    @api.route(&#34;/app&#34;)
+    def _app():
         &#34;&#34;&#34;
         This REST endpoint returns a JSON array containing a list of the columns stored on the device.
         &#34;&#34;&#34;
-        rows = app_columns(api.config[&#39;data_dir&#39;])
-        response.content_type = &#34;application/json&#34;
-        return dumps(rows, indent=2)
-
-    @api.route(&#34;/query&#34;)
-    def _query():
-        &#34;&#34;&#34;
-        This REST endpoint accepts a `sql` parameter which contains the SQL query. It attaches all the
-        application databases to the primary metadata database and executes the query. Note that this 
-        endpoint does not perform any security checks.
-        &#34;&#34;&#34;
-        rows = execute_sql(api.config[&#39;data_dir&#39;], request.params.get(&#34;sql&#34;))
+        rows = app_columns(api.config[&#39;storage_dir&#39;])
         response.content_type = &#34;application/json&#34;
         return dumps(rows, indent=2)
 
@@ -265,7 +279,7 @@ for interacting with this API are provided under <a title="tiresias.client.api" 
         `schema` parameter is a JSON object.
         &#34;&#34;&#34;
         schema = loads(request.params.get(&#34;schema&#34;))
-        register_app(api.config[&#39;data_dir&#39;], app_name, schema)
+        register_app(api.config[&#39;storage_dir&#39;], app_name, schema)
         return &#34;&#34;
 
     @api.route(&#34;/app/&lt;app_name&gt;/insert&#34;)
@@ -275,10 +289,40 @@ for interacting with this API are provided under <a title="tiresias.client.api" 
         object in the `payload` field.
         &#34;&#34;&#34;
         payload = loads(request.params.get(&#34;payload&#34;))
-        insert_payload(api.config[&#39;data_dir&#39;], app_name, payload)
+        insert_payload(api.config[&#39;storage_dir&#39;], app_name, payload)
         return &#34;&#34;
 
-    api.run(host=&#34;localhost&#34;, port=port)</code></pre>
+    api.run(host=&#34;localhost&#34;, port=storage_port, quiet=True)</code></pre>
+</details>
+</dd>
+<dt id="tiresias.client.task_handler"><code class="name flex">
+<span>def <span class="ident">task_handler</span></span>(<span>server_url, storage_dir, whitelist, policy)</span>
+</code></dt>
+<dd>
+<section class="desc"></section>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">def task_handler(server_url, storage_dir, whitelist, policy):
+    processed = set()
+    while True:
+        try:
+            tasks = server.remote.list_tasks(server_url)
+            for id, task in tasks.items():
+                if id in processed:
+                    continue
+                if id in whitelist or policy == &#34;accept&#34;:
+                    result, err = handle_task(storage_dir, task)
+                    if not err:
+                        server.remote.approve_task(server_url, id, result)
+                    else:
+                        print(err)
+                    processed.add(id)
+        except requests.exceptions.ConnectionError:
+            print(&#34;The server at %s is offline; retrying in 1s.&#34; % server_url)
+            sleep(1.0)
+        sleep(0.5 + random())</code></pre>
 </details>
 </dd>
 </dl>
@@ -299,16 +343,18 @@ for interacting with this API are provided under <a title="tiresias.client.api" 
 </li>
 <li><h3><a href="#header-submodules">Sub-modules</a></h3>
 <ul>
-<li><code><a title="tiresias.client.api" href="api.html">tiresias.client.api</a></code></li>
-<li><code><a title="tiresias.client.handler" href="handler.html">tiresias.client.handler</a></code></li>
+<li><code><a title="tiresias.client.handler" href="handler/index.html">tiresias.client.handler</a></code></li>
+<li><code><a title="tiresias.client.remote" href="remote.html">tiresias.client.remote</a></code></li>
 <li><code><a title="tiresias.client.storage" href="storage.html">tiresias.client.storage</a></code></li>
 </ul>
 </li>
 <li><h3><a href="#header-functions">Functions</a></h3>
 <ul class="">
-<li><code><a title="tiresias.client.query_handler" href="#tiresias.client.query_handler">query_handler</a></code></li>
+<li><code><a title="tiresias.client.create_dummy_dataset" href="#tiresias.client.create_dummy_dataset">create_dummy_dataset</a></code></li>
+<li><code><a title="tiresias.client.random" href="#tiresias.client.random">random</a></code></li>
 <li><code><a title="tiresias.client.run" href="#tiresias.client.run">run</a></code></li>
 <li><code><a title="tiresias.client.storage_server" href="#tiresias.client.storage_server">storage_server</a></code></li>
+<li><code><a title="tiresias.client.task_handler" href="#tiresias.client.task_handler">task_handler</a></code></li>
 </ul>
 </li>
 </ul>

@@ -1,4 +1,4 @@
-import tiresias.client.storage as storage
+from tiresias.client import storage
 
 def test_initialize(tmpdir):
     storage.initialize(tmpdir)

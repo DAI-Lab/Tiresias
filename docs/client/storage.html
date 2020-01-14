@@ -33,6 +33,7 @@ underlying SQLite databases.
 &#34;&#34;&#34;
 import os
 import sqlite3
+from random import random
 
 def dict_factory(cursor, row):
     &#34;&#34;&#34;
@@ -44,14 +45,14 @@ def dict_factory(cursor, row):
         d[col[0]] = row[idx]
     return d
 
-def initialize(data_dir):
+def initialize(storage_dir):
     &#34;&#34;&#34;
     This function creates the data directory if necessary and initializes the 
     metadata database.
     &#34;&#34;&#34;
-    if not os.path.exists(data_dir):
-        os.makedirs(data_dir)
-    connection = sqlite3.connect(os.path.join(data_dir, &#34;metadata.db&#34;))
+    if not os.path.exists(storage_dir):
+        os.makedirs(storage_dir)
+    connection = sqlite3.connect(os.path.join(storage_dir, &#34;metadata.db&#34;))
     cursor = connection.cursor()
     cursor.executescript(&#34;&#34;&#34;
         CREATE TABLE IF NOT EXISTS apps (app_name);
@@ -71,11 +72,11 @@ def initialize(data_dir):
     cursor.close()
     connection.close()
 
-def app_columns(data_dir):
+def app_columns(storage_dir):
     &#34;&#34;&#34;
     Return a list of dictionaries describing the columns that are being collected.
     &#34;&#34;&#34;
-    connection = sqlite3.connect(os.path.join(data_dir, &#34;metadata.db&#34;))
+    connection = sqlite3.connect(os.path.join(storage_dir, &#34;metadata.db&#34;))
     connection.row_factory = dict_factory
 
     try:
@@ -88,18 +89,18 @@ def app_columns(data_dir):
 
     return rows
 
-def execute_sql(data_dir, sql):
+def execute_sql(storage_dir, sql):
     &#34;&#34;&#34;
     Execute the given query on the database, using &#34;&lt;app_name&gt;.&lt;table_name&gt;&#34; to specify tables.
     &#34;&#34;&#34;
-    connection = sqlite3.connect(os.path.join(data_dir, &#34;metadata.db&#34;))
+    connection = sqlite3.connect(os.path.join(storage_dir, &#34;metadata.db&#34;))
     connection.row_factory = dict_factory
     cursor = connection.cursor()
 
     try:
         cursor.execute(&#34;SELECT * FROM apps&#34;)
         for app in cursor.fetchall():
-            cursor.execute(&#34;ATTACH DATABASE &#39;%s&#39; AS %s&#34; % (os.path.join(data_dir, app[&#34;app_name&#34;] + &#34;.db&#34;), app[&#34;app_name&#34;]))
+            cursor.execute(&#34;ATTACH DATABASE &#39;%s&#39; AS %s&#34; % (os.path.join(storage_dir, app[&#34;app_name&#34;] + &#34;.db&#34;), app[&#34;app_name&#34;]))
 
         cursor.execute(sql)
         rows = cursor.fetchall()
@@ -123,7 +124,7 @@ def validate_schema(schema):
             assert column[&#34;type&#34;] in [&#34;int&#34;, &#34;string&#34;, &#34;float&#34;], &#34;Expected type to be in {int, string, float}&#34;
             assert type(column[&#34;description&#34;]) == str, &#34;Expected description to be a string&#34;
 
-def register_app(data_dir, app_name, schema):
+def register_app(storage_dir, app_name, schema):
     &#34;&#34;&#34;
     Register an application, which is defined by an app_name and a schema, and create the 
     appropriate tables in the database. For example, a schema which defines two tables containing 
@@ -160,7 +161,7 @@ def register_app(data_dir, app_name, schema):
     validate_schema(schema)
 
     # Update the metadata database
-    connection = sqlite3.connect(os.path.join(data_dir, &#34;metadata.db&#34;))
+    connection = sqlite3.connect(os.path.join(storage_dir, &#34;metadata.db&#34;))
     cursor = connection.cursor()
     try:
         cursor.execute(&#34;SELECT * FROM apps WHERE app_name = ?&#34;, (app_name,))
@@ -178,12 +179,14 @@ def register_app(data_dir, app_name, schema):
 
     # Create the app database
     try:
-        connection = sqlite3.connect(os.path.join(data_dir, &#34;%s.db&#34; % app_name))
+        connection = sqlite3.connect(os.path.join(storage_dir, &#34;%s.db&#34; % app_name))
         cursor = connection.cursor()
         for table_name, table in schema.items():
             cursor.execute(&#34;CREATE TABLE %s (%s)&#34; % (table_name, &#34;,&#34;.join(table[&#34;columns&#34;].keys())))
         cursor.close()
         connection.commit()
+    except:
+        raise
     finally:
         connection.close()
 
@@ -195,7 +198,7 @@ def validate_payload(payload):
         for row in rows:
             assert type(row) == dict, &#34;Expected each row in the update to be a dictionary&#34;
 
-def insert_payload(data_dir, app_name, payload):
+def insert_payload(storage_dir, app_name, payload):
     &#34;&#34;&#34;
     The entire payload is considered a single transaction; for example, an update which inserts two 
     rows into `tableX` and one row into `tableY` is shown below:
@@ -212,8 +215,8 @@ def insert_payload(data_dir, app_name, payload):
     }
     ```
     &#34;&#34;&#34;
-    assert os.path.exists(os.path.join(data_dir, &#34;%s.db&#34; % app_name)), &#34;App not found.&#34;
-    connection = sqlite3.connect(os.path.join(data_dir, &#34;%s.db&#34; % app_name))
+    assert os.path.exists(os.path.join(storage_dir, &#34;%s.db&#34; % app_name)), &#34;App not found.&#34;
+    connection = sqlite3.connect(os.path.join(storage_dir, &#34;%s.db&#34; % app_name))
     cursor = connection.cursor()
 
     try:
@@ -241,7 +244,7 @@ def insert_payload(data_dir, app_name, payload):
 <h2 class="section-title" id="header-functions">Functions</h2>
 <dl>
 <dt id="tiresias.client.storage.app_columns"><code class="name flex">
-<span>def <span class="ident">app_columns</span></span>(<span>data_dir)</span>
+<span>def <span class="ident">app_columns</span></span>(<span>storage_dir)</span>
 </code></dt>
 <dd>
 <section class="desc"><p>Return a list of dictionaries describing the columns that are being collected.</p></section>
@@ -249,11 +252,11 @@ def insert_payload(data_dir, app_name, payload):
 <summary>
 <span>Expand source code</span>
 </summary>
-<pre><code class="python">def app_columns(data_dir):
+<pre><code class="python">def app_columns(storage_dir):
     &#34;&#34;&#34;
     Return a list of dictionaries describing the columns that are being collected.
     &#34;&#34;&#34;
-    connection = sqlite3.connect(os.path.join(data_dir, &#34;metadata.db&#34;))
+    connection = sqlite3.connect(os.path.join(storage_dir, &#34;metadata.db&#34;))
     connection.row_factory = dict_factory
 
     try:
@@ -289,7 +292,7 @@ a dictionary version of the row.</p></section>
 </details>
 </dd>
 <dt id="tiresias.client.storage.execute_sql"><code class="name flex">
-<span>def <span class="ident">execute_sql</span></span>(<span>data_dir, sql)</span>
+<span>def <span class="ident">execute_sql</span></span>(<span>storage_dir, sql)</span>
 </code></dt>
 <dd>
 <section class="desc"><p>Execute the given query on the database, using "<app_name>.<table_name>" to specify tables.</p></section>
@@ -297,18 +300,18 @@ a dictionary version of the row.</p></section>
 <summary>
 <span>Expand source code</span>
 </summary>
-<pre><code class="python">def execute_sql(data_dir, sql):
+<pre><code class="python">def execute_sql(storage_dir, sql):
     &#34;&#34;&#34;
     Execute the given query on the database, using &#34;&lt;app_name&gt;.&lt;table_name&gt;&#34; to specify tables.
     &#34;&#34;&#34;
-    connection = sqlite3.connect(os.path.join(data_dir, &#34;metadata.db&#34;))
+    connection = sqlite3.connect(os.path.join(storage_dir, &#34;metadata.db&#34;))
     connection.row_factory = dict_factory
     cursor = connection.cursor()
 
     try:
         cursor.execute(&#34;SELECT * FROM apps&#34;)
         for app in cursor.fetchall():
-            cursor.execute(&#34;ATTACH DATABASE &#39;%s&#39; AS %s&#34; % (os.path.join(data_dir, app[&#34;app_name&#34;] + &#34;.db&#34;), app[&#34;app_name&#34;]))
+            cursor.execute(&#34;ATTACH DATABASE &#39;%s&#39; AS %s&#34; % (os.path.join(storage_dir, app[&#34;app_name&#34;] + &#34;.db&#34;), app[&#34;app_name&#34;]))
 
         cursor.execute(sql)
         rows = cursor.fetchall()
@@ -320,7 +323,7 @@ a dictionary version of the row.</p></section>
 </details>
 </dd>
 <dt id="tiresias.client.storage.initialize"><code class="name flex">
-<span>def <span class="ident">initialize</span></span>(<span>data_dir)</span>
+<span>def <span class="ident">initialize</span></span>(<span>storage_dir)</span>
 </code></dt>
 <dd>
 <section class="desc"><p>This function creates the data directory if necessary and initializes the
@@ -329,14 +332,14 @@ metadata database.</p></section>
 <summary>
 <span>Expand source code</span>
 </summary>
-<pre><code class="python">def initialize(data_dir):
+<pre><code class="python">def initialize(storage_dir):
     &#34;&#34;&#34;
     This function creates the data directory if necessary and initializes the 
     metadata database.
     &#34;&#34;&#34;
-    if not os.path.exists(data_dir):
-        os.makedirs(data_dir)
-    connection = sqlite3.connect(os.path.join(data_dir, &#34;metadata.db&#34;))
+    if not os.path.exists(storage_dir):
+        os.makedirs(storage_dir)
+    connection = sqlite3.connect(os.path.join(storage_dir, &#34;metadata.db&#34;))
     cursor = connection.cursor()
     cursor.executescript(&#34;&#34;&#34;
         CREATE TABLE IF NOT EXISTS apps (app_name);
@@ -358,7 +361,7 @@ metadata database.</p></section>
 </details>
 </dd>
 <dt id="tiresias.client.storage.insert_payload"><code class="name flex">
-<span>def <span class="ident">insert_payload</span></span>(<span>data_dir, app_name, payload)</span>
+<span>def <span class="ident">insert_payload</span></span>(<span>storage_dir, app_name, payload)</span>
 </code></dt>
 <dd>
 <section class="desc"><p>The entire payload is considered a single transaction; for example, an update which inserts two
@@ -377,7 +380,7 @@ rows into <code>tableX</code> and one row into <code>tableY</code> is shown belo
 <summary>
 <span>Expand source code</span>
 </summary>
-<pre><code class="python">def insert_payload(data_dir, app_name, payload):
+<pre><code class="python">def insert_payload(storage_dir, app_name, payload):
     &#34;&#34;&#34;
     The entire payload is considered a single transaction; for example, an update which inserts two 
     rows into `tableX` and one row into `tableY` is shown below:
@@ -394,8 +397,8 @@ rows into <code>tableX</code> and one row into <code>tableY</code> is shown belo
     }
     ```
     &#34;&#34;&#34;
-    assert os.path.exists(os.path.join(data_dir, &#34;%s.db&#34; % app_name)), &#34;App not found.&#34;
-    connection = sqlite3.connect(os.path.join(data_dir, &#34;%s.db&#34; % app_name))
+    assert os.path.exists(os.path.join(storage_dir, &#34;%s.db&#34; % app_name)), &#34;App not found.&#34;
+    connection = sqlite3.connect(os.path.join(storage_dir, &#34;%s.db&#34; % app_name))
     cursor = connection.cursor()
 
     try:
@@ -415,8 +418,14 @@ rows into <code>tableX</code> and one row into <code>tableY</code> is shown belo
         connection.close()</code></pre>
 </details>
 </dd>
+<dt id="tiresias.client.storage.random"><code class="name flex">
+<span>def <span class="ident">random</span></span>(<span>...)</span>
+</code></dt>
+<dd>
+<section class="desc"><p>random() -&gt; x in the interval [0, 1).</p></section>
+</dd>
 <dt id="tiresias.client.storage.register_app"><code class="name flex">
-<span>def <span class="ident">register_app</span></span>(<span>data_dir, app_name, schema)</span>
+<span>def <span class="ident">register_app</span></span>(<span>storage_dir, app_name, schema)</span>
 </code></dt>
 <dd>
 <section class="desc"><p>Register an application, which is defined by an app_name and a schema, and create the
@@ -451,7 +460,7 @@ one and two columns, respectively, is shown here:</p>
 <summary>
 <span>Expand source code</span>
 </summary>
-<pre><code class="python">def register_app(data_dir, app_name, schema):
+<pre><code class="python">def register_app(storage_dir, app_name, schema):
     &#34;&#34;&#34;
     Register an application, which is defined by an app_name and a schema, and create the 
     appropriate tables in the database. For example, a schema which defines two tables containing 
@@ -488,7 +497,7 @@ one and two columns, respectively, is shown here:</p>
     validate_schema(schema)
 
     # Update the metadata database
-    connection = sqlite3.connect(os.path.join(data_dir, &#34;metadata.db&#34;))
+    connection = sqlite3.connect(os.path.join(storage_dir, &#34;metadata.db&#34;))
     cursor = connection.cursor()
     try:
         cursor.execute(&#34;SELECT * FROM apps WHERE app_name = ?&#34;, (app_name,))
@@ -506,12 +515,14 @@ one and two columns, respectively, is shown here:</p>
 
     # Create the app database
     try:
-        connection = sqlite3.connect(os.path.join(data_dir, &#34;%s.db&#34; % app_name))
+        connection = sqlite3.connect(os.path.join(storage_dir, &#34;%s.db&#34; % app_name))
         cursor = connection.cursor()
         for table_name, table in schema.items():
             cursor.execute(&#34;CREATE TABLE %s (%s)&#34; % (table_name, &#34;,&#34;.join(table[&#34;columns&#34;].keys())))
         cursor.close()
         connection.commit()
+    except:
+        raise
     finally:
         connection.close()</code></pre>
 </details>
@@ -581,6 +592,7 @@ one and two columns, respectively, is shown here:</p>
 <li><code><a title="tiresias.client.storage.execute_sql" href="#tiresias.client.storage.execute_sql">execute_sql</a></code></li>
 <li><code><a title="tiresias.client.storage.initialize" href="#tiresias.client.storage.initialize">initialize</a></code></li>
 <li><code><a title="tiresias.client.storage.insert_payload" href="#tiresias.client.storage.insert_payload">insert_payload</a></code></li>
+<li><code><a title="tiresias.client.storage.random" href="#tiresias.client.storage.random">random</a></code></li>
 <li><code><a title="tiresias.client.storage.register_app" href="#tiresias.client.storage.register_app">register_app</a></code></li>
 <li><code><a title="tiresias.client.storage.validate_payload" href="#tiresias.client.storage.validate_payload">validate_payload</a></code></li>
 <li><code><a title="tiresias.client.storage.validate_schema" href="#tiresias.client.storage.validate_schema">validate_schema</a></code></li>

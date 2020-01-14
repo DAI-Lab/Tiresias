@@ -1,10 +1,4 @@
-"""
-The `tiresias.core` module is responsible for providing the underlying 
-implementations of various differential privacy mechanisms and machine
-learning models.
-"""
-import pickle
-import codecs
+import pickle, codecs
 
 def b64_encode(obj):
     """

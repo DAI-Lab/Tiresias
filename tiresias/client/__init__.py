@@ -1,69 +1,60 @@
-"""
-The `tiresias.client` module is responsible for (1) providing a local personal 
-data store and (2) performing computations necessary for differential privacy 
-upon request. At the top-level, this module provides functions for (1) running 
-a storage server which provides a REST API for applications to store data in
-the personal data store and (2) starting a thread which periodically looks for 
-queries that the user can contribute to and performs the computations that are
-needed to securely contribute to them.
-"""
-# pylint: disable=no-member
+import os
 import requests
 import threading
 import urllib.parse
 from time import sleep
 from json import loads, dumps
-from random import random
-from tiresias.server import api as remote_api
-from tiresias.client.handler import handle
-from tiresias.client.storage import initialize, create_dummy_dataset, app_columns, execute_sql, register_app, insert_payload
+from random import random, randint
+from bottle import Bottle, request, response, static_file
+import tiresias.server as server
+import tiresias.server.remote
+from tiresias.client.handler import handle_task
+from tiresias.client.storage import initialize, app_columns, register_app, insert_payload
 
-def run(server="http://localhost:3000", data_dir="/tmp/tiresias", port=8000):
-    """
-    This function launches the storage server and query handler on different 
-    threads and blocks forever.
-    """
-    storage_thread = threading.Thread(target=storage_server, args=(data_dir, port))
+def run(server_url, storage_dir, storage_port, policy):
+    whitelist = set()
+
+    storage_thread = threading.Thread(target=storage_server, args=(storage_dir, storage_port, server_url, whitelist))
     storage_thread.start()
     sleep(0.1)
 
-    query_thread = threading.Thread(target=query_handler, args=(server, data_dir))
-    query_thread.start()
+    handler_thread = threading.Thread(target=task_handler, args=(server_url, storage_dir, whitelist, policy))
+    handler_thread.start()
     sleep(0.1)
 
     storage_thread.join()
-    query_thread.join()
+    handler_thread.join()
 
-def storage_server(data_dir="/tmp/tiresias", port=8000):
-    """
-    This function launches the storage server. It stores the SQLite databases 
-    in the given data directory and listens on the given port. Helper functions
-    for interacting with this API are provided under `tiresias.client.api`.
-    """
-    from bottle import Bottle, request, response
-    
+def storage_server(storage_dir, storage_port, server_url, whitelist):
     api = Bottle()
-    initialize(data_dir)
-    create_dummy_dataset(data_dir)
-    api.config['data_dir'] = data_dir
+    initialize(storage_dir)
+    create_dummy_dataset(storage_dir)
+    api.config['storage_dir'] = storage_dir
 
     @api.route("/")
     def _index():
+        root = os.path.dirname(__file__)
+        return static_file('client.html', root=root)
+
+    @api.route("/tasks")
+    def _tasks():
+        tasks = tiresias.server.remote.list_tasks(server_url)
+        response.content_type = "application/json"
+        for task_id, task in tasks.items():
+            task["accepted"] = task_id in whitelist
+        return tasks
+
+    @api.route("/whitelist/<task_id>")
+    def _whitelist_task(task_id):
+        whitelist.add(task_id)
+        return ""
+
+    @api.route("/app")
+    def _app():
         """
         This REST endpoint returns a JSON array containing a list of the columns stored on the device.
         """
-        rows = app_columns(api.config['data_dir'])
-        response.content_type = "application/json"
-        return dumps(rows, indent=2)
-
-    @api.route("/query")
-    def _query():
-        """
-        This REST endpoint accepts a `sql` parameter which contains the SQL query. It attaches all the
-        application databases to the primary metadata database and executes the query. Note that this 
-        endpoint does not perform any security checks.
-        """
-        rows = execute_sql(api.config['data_dir'], request.params.get("sql"))
+        rows = app_columns(api.config['storage_dir'])
         response.content_type = "application/json"
         return dumps(rows, indent=2)
 
@@ -74,7 +65,7 @@ def storage_server(data_dir="/tmp/tiresias", port=8000):
         `schema` parameter is a JSON object.
         """
         schema = loads(request.params.get("schema"))
-        register_app(api.config['data_dir'], app_name, schema)
+        register_app(api.config['storage_dir'], app_name, schema)
         return ""
 
     @api.route("/app/<app_name>/insert")
@@ -84,27 +75,47 @@ def storage_server(data_dir="/tmp/tiresias", port=8000):
         object in the `payload` field.
         """
         payload = loads(request.params.get("payload"))
-        insert_payload(api.config['data_dir'], app_name, payload)
+        insert_payload(api.config['storage_dir'], app_name, payload)
         return ""
 
-    api.run(host="localhost", port=port)
+    api.run(host="localhost", port=storage_port, quiet=True)
 
-def query_handler(server, data_dir):
-    """
-    This function launches the query handler. It repeatedly asks the server for
-    new queries to process and then processes them.
-    """
-    handled = set()
+def task_handler(server_url, storage_dir, whitelist, policy):
+    processed = set()
     while True:
         try:
-            for query_id, query in remote_api.list_queries(server).items():
-                if query_id in handled:
+            tasks = server.remote.list_tasks(server_url)
+            for id, task in tasks.items():
+                if id in processed:
                     continue
-                result = handle(query, data_dir)
-                if result:
-                    remote_api.approve_query(server, query_id, result)
-                handled.add(query_id)
+                if id in whitelist or policy == "accept":
+                    result, err = handle_task(storage_dir, task)
+                    if not err:
+                        server.remote.approve_task(server_url, id, result)
+                    else:
+                        print(err)
+                    processed.add(id)
         except requests.exceptions.ConnectionError:
-            print("Server at %s is offline." % server)
-            sleep(0.1)
+            print("The server at %s is offline; retrying in 1s." % server_url)
+            sleep(1.0)
         sleep(0.5 + random())
+
+def create_dummy_dataset(storage_dir):
+    from sklearn.datasets import load_wine
+    
+    wine_dataset = load_wine()
+    wine_dataset.feature_names = [k.replace("/", "_") for k in wine_dataset.feature_names]
+
+    register_app(storage_dir, "dummy", {
+        "wine": {
+            "description": "Rows sampled from the Wine classification dataset.",
+            "columns": {x: {"type": "float", "description": x} for x in wine_dataset.feature_names}
+        }
+    })
+
+    i = randint(0, len(wine_dataset.data)-1)
+    insert_payload(storage_dir, "dummy", {
+        "wine": [
+            {k: v for k, v in zip(wine_dataset.feature_names, wine_dataset.data[i])}
+        ]
+    })

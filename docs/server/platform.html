@@ -1,0 +1,483 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, minimum-scale=1" />
+<meta name="generator" content="pdoc 0.7.1" />
+<title>tiresias.server.platform API documentation</title>
+<meta name="description" content="" />
+<link href='https://cdnjs.cloudflare.com/ajax/libs/normalize/8.0.0/normalize.min.css' rel='stylesheet'>
+<link href='https://cdnjs.cloudflare.com/ajax/libs/10up-sanitize.css/8.0.0/sanitize.min.css' rel='stylesheet'>
+<link href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/9.12.0/styles/github.min.css" rel="stylesheet">
+<style>.flex{display:flex !important}body{line-height:1.5em}#content{padding:20px}#sidebar{padding:30px;overflow:hidden}.http-server-breadcrumbs{font-size:130%;margin:0 0 15px 0}#footer{font-size:.75em;padding:5px 30px;border-top:1px solid #ddd;text-align:right}#footer p{margin:0 0 0 1em;display:inline-block}#footer p:last-child{margin-right:30px}h1,h2,h3,h4,h5{font-weight:300}h1{font-size:2.5em;line-height:1.1em}h2{font-size:1.75em;margin:1em 0 .50em 0}h3{font-size:1.4em;margin:25px 0 10px 0}h4{margin:0;font-size:105%}a{color:#058;text-decoration:none;transition:color .3s ease-in-out}a:hover{color:#e82}.title code{font-weight:bold}h2[id^="header-"]{margin-top:2em}.ident{color:#900}pre code{background:#f8f8f8;font-size:.8em;line-height:1.4em}code{background:#f2f2f1;padding:1px 4px;overflow-wrap:break-word}h1 code{background:transparent}pre{background:#f8f8f8;border:0;border-top:1px solid #ccc;border-bottom:1px solid #ccc;margin:1em 0;padding:1ex}#http-server-module-list{display:flex;flex-flow:column}#http-server-module-list div{display:flex}#http-server-module-list dt{min-width:10%}#http-server-module-list p{margin-top:0}.toc ul,#index{list-style-type:none;margin:0;padding:0}#index code{background:transparent}#index h3{border-bottom:1px solid #ddd}#index ul{padding:0}#index h4{font-weight:bold}#index h4 + ul{margin-bottom:.6em}@media (min-width:200ex){#index .two-column{column-count:2}}@media (min-width:300ex){#index .two-column{column-count:3}}dl{margin-bottom:2em}dl dl:last-child{margin-bottom:4em}dd{margin:0 0 1em 3em}#header-classes + dl > dd{margin-bottom:3em}dd dd{margin-left:2em}dd p{margin:10px 0}.name{background:#eee;font-weight:bold;font-size:.85em;padding:5px 10px;display:inline-block;min-width:40%}.name:hover{background:#e0e0e0}.name > span:first-child{white-space:nowrap}.name.class > span:nth-child(2){margin-left:.4em}.inherited{color:#999;border-left:5px solid #eee;padding-left:1em}.inheritance em{font-style:normal;font-weight:bold}.desc h2{font-weight:400;font-size:1.25em}.desc h3{font-size:1em}.desc dt code{background:inherit}.source summary,.git-link-div{color:#666;text-align:right;font-weight:400;font-size:.8em;text-transform:uppercase}.source summary > *{white-space:nowrap;cursor:pointer}.git-link{color:inherit;margin-left:1em}.source pre{max-height:500px;overflow:auto;margin:0}.source pre code{font-size:12px;overflow:visible}.hlist{list-style:none}.hlist li{display:inline}.hlist li:after{content:',\2002'}.hlist li:last-child:after{content:none}.hlist .hlist{display:inline;padding-left:1em}img{max-width:100%}.admonition{padding:.1em .5em;margin-bottom:1em}.admonition-title{font-weight:bold}.admonition.note,.admonition.info,.admonition.important{background:#aef}.admonition.todo,.admonition.versionadded,.admonition.tip,.admonition.hint{background:#dfd}.admonition.warning,.admonition.versionchanged,.admonition.deprecated{background:#fd4}.admonition.error,.admonition.danger,.admonition.caution{background:lightpink}</style>
+<style media="screen and (min-width: 700px)">@media screen and (min-width:700px){#sidebar{width:30%}#content{width:70%;max-width:100ch;padding:3em 4em;border-left:1px solid #ddd}pre code{font-size:1em}.item .name{font-size:1em}main{display:flex;flex-direction:row-reverse;justify-content:flex-end}.toc ul ul,#index ul{padding-left:1.5em}.toc > ul > li{margin-top:.5em}}</style>
+<style media="print">@media print{#sidebar h1{page-break-before:always}.source{display:none}}@media print{*{background:transparent !important;color:#000 !important;box-shadow:none !important;text-shadow:none !important}a[href]:after{content:" (" attr(href) ")";font-size:90%}a[href][title]:after{content:none}abbr[title]:after{content:" (" attr(title) ")"}.ir a:after,a[href^="javascript:"]:after,a[href^="#"]:after{content:""}pre,blockquote{border:1px solid #999;page-break-inside:avoid}thead{display:table-header-group}tr,img{page-break-inside:avoid}img{max-width:100% !important}@page{margin:0.5cm}p,h2,h3{orphans:3;widows:3}h1,h2,h3,h4,h5,h6{page-break-after:avoid}}</style>
+</head>
+<body>
+<main>
+<article id="content">
+<header>
+<h1 class="title">Module <code>tiresias.server.platform</code></h1>
+</header>
+<section id="section-intro">
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">import uuid
+import threading
+from time import time
+from enum import Enum
+from tiresias.core import b64_encode
+from tiresias.server.handler import handle_task
+
+class State:
+    ERROR = &#39;ERROR&#39;
+    RUNNING = &#39;RUNNING&#39;
+    PENDING = &#39;PENDING&#39;
+    COMPLETE = &#39;COMPLETE&#39;
+
+class Platform(object):
+
+    def __init__(self):
+        &#34;&#34;&#34;
+        The Platform object is responsible for managing and executing tasks. It&#39;s designed to work
+        with a multi-threaded web server and stores everything in-memory.
+        &#34;&#34;&#34;
+        self._lock = threading.RLock()
+        self._tasks = {}
+        self._payloads = {}
+
+    def gc(self, timeout=60):
+        &#34;&#34;&#34;
+        Delete the data for any completed tasks and delete any completed tasks that have passed the
+        timeout window.
+        &#34;&#34;&#34;
+        with self._lock:
+            for tid in set(self._tasks.keys()):
+                if self._tasks[tid][&#34;status&#34;] == State.COMPLETE:
+                    del self._payloads[tid]
+                    if time() - self._tasks[tid][&#34;start&#34;] &gt; timeout:
+                        del self._tasks[tid]
+    
+    def run(self):
+        &#34;&#34;&#34;
+        Examing the pending tasks and, if there&#39;s enough data, start processing the task. Note that
+        the task handler will block the platform accepting new tasks and/or data; at some point, we 
+        will need to move the task handler into its own process.
+        &#34;&#34;&#34;
+        with self._lock:
+            for tid in self.tasks(only_pending=True):
+                if self._tasks[tid][&#34;count&#34;] &lt; self._tasks[tid][&#34;min_count&#34;]:
+                    continue
+                self._tasks[tid][&#34;status&#34;] = State.RUNNING
+                result, err = handle_task(self._tasks[tid], self._payloads[tid])
+                if err:
+                    self._tasks[tid][&#34;status&#34;] = State.ERROR
+                    self._tasks[tid][&#34;result&#34;] = str(err)
+                else:
+                    self._tasks[tid][&#34;result&#34;] = b64_encode(result)
+                    self._tasks[tid][&#34;status&#34;] = State.COMPLETE
+                    self._tasks[tid][&#34;end&#34;] = time()
+    
+    def tasks(self, only_pending=False):
+        &#34;&#34;&#34;
+        Return a list of tasks.
+        &#34;&#34;&#34;
+        with self._lock:
+            if not only_pending:
+                return self._tasks
+            return {k: v for k, v in self._tasks.items() if v[&#34;status&#34;] == State.PENDING}
+    
+    def create(self, task):
+        &#34;&#34;&#34;
+        Create a new task.
+        &#34;&#34;&#34;
+        with self._lock:
+            task[&#34;id&#34;] = str(uuid.uuid4())
+            task[&#34;status&#34;] = State.PENDING
+            task[&#34;start&#34;] = time()
+            task[&#34;count&#34;] = 0
+            self._tasks[task[&#34;id&#34;]] = task
+            self._payloads[task[&#34;id&#34;]] = []
+            return task[&#34;id&#34;]
+    
+    def fetch(self, task_id):
+        &#34;&#34;&#34;
+        Fetch a specific task.
+        &#34;&#34;&#34;
+        with self._lock:
+            return self._tasks[task_id]
+
+    def submit(self, task_id, payload):
+        &#34;&#34;&#34;
+        Store the data for a specific task in-memory and update the counters.
+        &#34;&#34;&#34;
+        with self._lock:
+            task = self._tasks[task_id]
+            if task[&#34;status&#34;] != State.PENDING:
+                return False
+            self._payloads[task_id].append(payload)
+            self._tasks[task_id][&#34;count&#34;] = len(self._payloads[task_id])
+            return True</code></pre>
+</details>
+</section>
+<section>
+</section>
+<section>
+</section>
+<section>
+</section>
+<section>
+<h2 class="section-title" id="header-classes">Classes</h2>
+<dl>
+<dt id="tiresias.server.platform.Platform"><code class="flex name class">
+<span>class <span class="ident">Platform</span></span>
+</code></dt>
+<dd>
+<section class="desc"><p>The Platform object is responsible for managing and executing tasks. It's designed to work
+with a multi-threaded web server and stores everything in-memory.</p></section>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">class Platform(object):
+
+    def __init__(self):
+        &#34;&#34;&#34;
+        The Platform object is responsible for managing and executing tasks. It&#39;s designed to work
+        with a multi-threaded web server and stores everything in-memory.
+        &#34;&#34;&#34;
+        self._lock = threading.RLock()
+        self._tasks = {}
+        self._payloads = {}
+
+    def gc(self, timeout=60):
+        &#34;&#34;&#34;
+        Delete the data for any completed tasks and delete any completed tasks that have passed the
+        timeout window.
+        &#34;&#34;&#34;
+        with self._lock:
+            for tid in set(self._tasks.keys()):
+                if self._tasks[tid][&#34;status&#34;] == State.COMPLETE:
+                    del self._payloads[tid]
+                    if time() - self._tasks[tid][&#34;start&#34;] &gt; timeout:
+                        del self._tasks[tid]
+    
+    def run(self):
+        &#34;&#34;&#34;
+        Examing the pending tasks and, if there&#39;s enough data, start processing the task. Note that
+        the task handler will block the platform accepting new tasks and/or data; at some point, we 
+        will need to move the task handler into its own process.
+        &#34;&#34;&#34;
+        with self._lock:
+            for tid in self.tasks(only_pending=True):
+                if self._tasks[tid][&#34;count&#34;] &lt; self._tasks[tid][&#34;min_count&#34;]:
+                    continue
+                self._tasks[tid][&#34;status&#34;] = State.RUNNING
+                result, err = handle_task(self._tasks[tid], self._payloads[tid])
+                if err:
+                    self._tasks[tid][&#34;status&#34;] = State.ERROR
+                    self._tasks[tid][&#34;result&#34;] = str(err)
+                else:
+                    self._tasks[tid][&#34;result&#34;] = b64_encode(result)
+                    self._tasks[tid][&#34;status&#34;] = State.COMPLETE
+                    self._tasks[tid][&#34;end&#34;] = time()
+    
+    def tasks(self, only_pending=False):
+        &#34;&#34;&#34;
+        Return a list of tasks.
+        &#34;&#34;&#34;
+        with self._lock:
+            if not only_pending:
+                return self._tasks
+            return {k: v for k, v in self._tasks.items() if v[&#34;status&#34;] == State.PENDING}
+    
+    def create(self, task):
+        &#34;&#34;&#34;
+        Create a new task.
+        &#34;&#34;&#34;
+        with self._lock:
+            task[&#34;id&#34;] = str(uuid.uuid4())
+            task[&#34;status&#34;] = State.PENDING
+            task[&#34;start&#34;] = time()
+            task[&#34;count&#34;] = 0
+            self._tasks[task[&#34;id&#34;]] = task
+            self._payloads[task[&#34;id&#34;]] = []
+            return task[&#34;id&#34;]
+    
+    def fetch(self, task_id):
+        &#34;&#34;&#34;
+        Fetch a specific task.
+        &#34;&#34;&#34;
+        with self._lock:
+            return self._tasks[task_id]
+
+    def submit(self, task_id, payload):
+        &#34;&#34;&#34;
+        Store the data for a specific task in-memory and update the counters.
+        &#34;&#34;&#34;
+        with self._lock:
+            task = self._tasks[task_id]
+            if task[&#34;status&#34;] != State.PENDING:
+                return False
+            self._payloads[task_id].append(payload)
+            self._tasks[task_id][&#34;count&#34;] = len(self._payloads[task_id])
+            return True</code></pre>
+</details>
+<h3>Methods</h3>
+<dl>
+<dt id="tiresias.server.platform.Platform.create"><code class="name flex">
+<span>def <span class="ident">create</span></span>(<span>self, task)</span>
+</code></dt>
+<dd>
+<section class="desc"><p>Create a new task.</p></section>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">def create(self, task):
+    &#34;&#34;&#34;
+    Create a new task.
+    &#34;&#34;&#34;
+    with self._lock:
+        task[&#34;id&#34;] = str(uuid.uuid4())
+        task[&#34;status&#34;] = State.PENDING
+        task[&#34;start&#34;] = time()
+        task[&#34;count&#34;] = 0
+        self._tasks[task[&#34;id&#34;]] = task
+        self._payloads[task[&#34;id&#34;]] = []
+        return task[&#34;id&#34;]</code></pre>
+</details>
+</dd>
+<dt id="tiresias.server.platform.Platform.fetch"><code class="name flex">
+<span>def <span class="ident">fetch</span></span>(<span>self, task_id)</span>
+</code></dt>
+<dd>
+<section class="desc"><p>Fetch a specific task.</p></section>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">def fetch(self, task_id):
+    &#34;&#34;&#34;
+    Fetch a specific task.
+    &#34;&#34;&#34;
+    with self._lock:
+        return self._tasks[task_id]</code></pre>
+</details>
+</dd>
+<dt id="tiresias.server.platform.Platform.gc"><code class="name flex">
+<span>def <span class="ident">gc</span></span>(<span>self, timeout=60)</span>
+</code></dt>
+<dd>
+<section class="desc"><p>Delete the data for any completed tasks and delete any completed tasks that have passed the
+timeout window.</p></section>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">def gc(self, timeout=60):
+    &#34;&#34;&#34;
+    Delete the data for any completed tasks and delete any completed tasks that have passed the
+    timeout window.
+    &#34;&#34;&#34;
+    with self._lock:
+        for tid in set(self._tasks.keys()):
+            if self._tasks[tid][&#34;status&#34;] == State.COMPLETE:
+                del self._payloads[tid]
+                if time() - self._tasks[tid][&#34;start&#34;] &gt; timeout:
+                    del self._tasks[tid]</code></pre>
+</details>
+</dd>
+<dt id="tiresias.server.platform.Platform.run"><code class="name flex">
+<span>def <span class="ident">run</span></span>(<span>self)</span>
+</code></dt>
+<dd>
+<section class="desc"><p>Examing the pending tasks and, if there's enough data, start processing the task. Note that
+the task handler will block the platform accepting new tasks and/or data; at some point, we
+will need to move the task handler into its own process.</p></section>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">def run(self):
+    &#34;&#34;&#34;
+    Examing the pending tasks and, if there&#39;s enough data, start processing the task. Note that
+    the task handler will block the platform accepting new tasks and/or data; at some point, we 
+    will need to move the task handler into its own process.
+    &#34;&#34;&#34;
+    with self._lock:
+        for tid in self.tasks(only_pending=True):
+            if self._tasks[tid][&#34;count&#34;] &lt; self._tasks[tid][&#34;min_count&#34;]:
+                continue
+            self._tasks[tid][&#34;status&#34;] = State.RUNNING
+            result, err = handle_task(self._tasks[tid], self._payloads[tid])
+            if err:
+                self._tasks[tid][&#34;status&#34;] = State.ERROR
+                self._tasks[tid][&#34;result&#34;] = str(err)
+            else:
+                self._tasks[tid][&#34;result&#34;] = b64_encode(result)
+                self._tasks[tid][&#34;status&#34;] = State.COMPLETE
+                self._tasks[tid][&#34;end&#34;] = time()</code></pre>
+</details>
+</dd>
+<dt id="tiresias.server.platform.Platform.submit"><code class="name flex">
+<span>def <span class="ident">submit</span></span>(<span>self, task_id, payload)</span>
+</code></dt>
+<dd>
+<section class="desc"><p>Store the data for a specific task in-memory and update the counters.</p></section>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">def submit(self, task_id, payload):
+    &#34;&#34;&#34;
+    Store the data for a specific task in-memory and update the counters.
+    &#34;&#34;&#34;
+    with self._lock:
+        task = self._tasks[task_id]
+        if task[&#34;status&#34;] != State.PENDING:
+            return False
+        self._payloads[task_id].append(payload)
+        self._tasks[task_id][&#34;count&#34;] = len(self._payloads[task_id])
+        return True</code></pre>
+</details>
+</dd>
+<dt id="tiresias.server.platform.Platform.tasks"><code class="name flex">
+<span>def <span class="ident">tasks</span></span>(<span>self, only_pending=False)</span>
+</code></dt>
+<dd>
+<section class="desc"><p>Return a list of tasks.</p></section>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">def tasks(self, only_pending=False):
+    &#34;&#34;&#34;
+    Return a list of tasks.
+    &#34;&#34;&#34;
+    with self._lock:
+        if not only_pending:
+            return self._tasks
+        return {k: v for k, v in self._tasks.items() if v[&#34;status&#34;] == State.PENDING}</code></pre>
+</details>
+</dd>
+</dl>
+</dd>
+<dt id="tiresias.server.platform.State"><code class="flex name class">
+<span>class <span class="ident">State</span></span>
+<span>(</span><span>*args, **kwargs)</span>
+</code></dt>
+<dd>
+<section class="desc"></section>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">class State:
+    ERROR = &#39;ERROR&#39;
+    RUNNING = &#39;RUNNING&#39;
+    PENDING = &#39;PENDING&#39;
+    COMPLETE = &#39;COMPLETE&#39;</code></pre>
+</details>
+<h3>Class variables</h3>
+<dl>
+<dt id="tiresias.server.platform.State.COMPLETE"><code class="name">var <span class="ident">COMPLETE</span></code></dt>
+<dd>
+<section class="desc"><p>str(object='') -&gt; str
+str(bytes_or_buffer[, encoding[, errors]]) -&gt; str</p>
+<p>Create a new string object from the given object. If encoding or
+errors is specified, then the object must expose a data buffer
+that will be decoded using the given encoding and error handler.
+Otherwise, returns the result of object.<strong>str</strong>() (if defined)
+or repr(object).
+encoding defaults to sys.getdefaultencoding().
+errors defaults to 'strict'.</p></section>
+</dd>
+<dt id="tiresias.server.platform.State.ERROR"><code class="name">var <span class="ident">ERROR</span></code></dt>
+<dd>
+<section class="desc"><p>str(object='') -&gt; str
+str(bytes_or_buffer[, encoding[, errors]]) -&gt; str</p>
+<p>Create a new string object from the given object. If encoding or
+errors is specified, then the object must expose a data buffer
+that will be decoded using the given encoding and error handler.
+Otherwise, returns the result of object.<strong>str</strong>() (if defined)
+or repr(object).
+encoding defaults to sys.getdefaultencoding().
+errors defaults to 'strict'.</p></section>
+</dd>
+<dt id="tiresias.server.platform.State.PENDING"><code class="name">var <span class="ident">PENDING</span></code></dt>
+<dd>
+<section class="desc"><p>str(object='') -&gt; str
+str(bytes_or_buffer[, encoding[, errors]]) -&gt; str</p>
+<p>Create a new string object from the given object. If encoding or
+errors is specified, then the object must expose a data buffer
+that will be decoded using the given encoding and error handler.
+Otherwise, returns the result of object.<strong>str</strong>() (if defined)
+or repr(object).
+encoding defaults to sys.getdefaultencoding().
+errors defaults to 'strict'.</p></section>
+</dd>
+<dt id="tiresias.server.platform.State.RUNNING"><code class="name">var <span class="ident">RUNNING</span></code></dt>
+<dd>
+<section class="desc"><p>str(object='') -&gt; str
+str(bytes_or_buffer[, encoding[, errors]]) -&gt; str</p>
+<p>Create a new string object from the given object. If encoding or
+errors is specified, then the object must expose a data buffer
+that will be decoded using the given encoding and error handler.
+Otherwise, returns the result of object.<strong>str</strong>() (if defined)
+or repr(object).
+encoding defaults to sys.getdefaultencoding().
+errors defaults to 'strict'.</p></section>
+</dd>
+</dl>
+</dd>
+</dl>
+</section>
+</article>
+<nav id="sidebar">
+<h1>Index</h1>
+<div class="toc">
+<ul></ul>
+</div>
+<ul id="index">
+<li><h3>Super-module</h3>
+<ul>
+<li><code><a title="tiresias.server" href="index.html">tiresias.server</a></code></li>
+</ul>
+</li>
+<li><h3><a href="#header-classes">Classes</a></h3>
+<ul>
+<li>
+<h4><code><a title="tiresias.server.platform.Platform" href="#tiresias.server.platform.Platform">Platform</a></code></h4>
+<ul class="two-column">
+<li><code><a title="tiresias.server.platform.Platform.create" href="#tiresias.server.platform.Platform.create">create</a></code></li>
+<li><code><a title="tiresias.server.platform.Platform.fetch" href="#tiresias.server.platform.Platform.fetch">fetch</a></code></li>
+<li><code><a title="tiresias.server.platform.Platform.gc" href="#tiresias.server.platform.Platform.gc">gc</a></code></li>
+<li><code><a title="tiresias.server.platform.Platform.run" href="#tiresias.server.platform.Platform.run">run</a></code></li>
+<li><code><a title="tiresias.server.platform.Platform.submit" href="#tiresias.server.platform.Platform.submit">submit</a></code></li>
+<li><code><a title="tiresias.server.platform.Platform.tasks" href="#tiresias.server.platform.Platform.tasks">tasks</a></code></li>
+</ul>
+</li>
+<li>
+<h4><code><a title="tiresias.server.platform.State" href="#tiresias.server.platform.State">State</a></code></h4>
+<ul class="">
+<li><code><a title="tiresias.server.platform.State.COMPLETE" href="#tiresias.server.platform.State.COMPLETE">COMPLETE</a></code></li>
+<li><code><a title="tiresias.server.platform.State.ERROR" href="#tiresias.server.platform.State.ERROR">ERROR</a></code></li>
+<li><code><a title="tiresias.server.platform.State.PENDING" href="#tiresias.server.platform.State.PENDING">PENDING</a></code></li>
+<li><code><a title="tiresias.server.platform.State.RUNNING" href="#tiresias.server.platform.State.RUNNING">RUNNING</a></code></li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+</nav>
+</main>
+<footer id="footer">
+<p>Generated by <a href="https://pdoc3.github.io/pdoc"><cite>pdoc</cite> 0.7.1</a>.</p>
+</footer>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/9.12.0/highlight.min.js"></script>
+<script>hljs.initHighlightingOnLoad()</script>
+</body>
+</html>

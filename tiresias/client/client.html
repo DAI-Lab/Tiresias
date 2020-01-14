@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Tiresias Client</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <script src="https://unpkg.com/axios/dist/axios.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/vue/dist/vue.js"></script>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bulma@0.8.0/css/bulma.min.css">
+    <script defer src="https://use.fontawesome.com/releases/v5.3.1/js/all.js"></script>
+    <style>
+        #app {
+            padding: 1em;
+        }
+    </style>
+</head>
+<body>
+    <section class="hero is-info">
+        <div class="hero-body">
+          <div class="container has-text-centered">
+            <h1 class="title">
+              Tiresias User Client
+            </h1>
+            <h2 class="subtitle">
+                An Open Source System for Privacy Preserving Machine Learning
+            </h2>
+          </div>
+        </div>
+      </section>
+    <section id="app">
+        <div class="container">
+            <div class="columns is-centered">
+                <div class="column is-two-thirds">
+                    <div class="tabs">
+                        <ul>
+                            <li v-bind:class="{'is-active': (tab=='tasks')}" v-on:click="tab='tasks'"><a>Open Tasks</a></li>
+                            <li v-bind:class="{'is-active': (tab=='accepted')}" v-on:click="tab='accepted'"><a>Accepted Tasks</a></li>
+                            <li v-bind:class="{'is-active': (tab=='data')}" v-on:click="tab='data'"><a>Personal Data Store</a></li>
+                        </ul>
+                    </div>
+                    <div v-if="tab == 'tasks' || tab == 'accepted'">
+                        <div v-if="Object.keys(tasks).length == 0">
+                            There are no tasks available at this time! Check back later.
+                        </div>
+                        <article v-for="(task, task_id) in tasks" class="message" v-if="(task.accepted && tab=='accepted') || (!task.accepted && tab=='tasks')">
+                            <div class="message-header">
+                                {{task.type.capitalize()}} Task
+                                <span style="float:right;font-size:10px;user-select:all;cursor:pointer;">{{task_id}}</span>
+                            </div>
+                            <div class="message-body">
+                                <pre>{{JSON.stringify(task, null, 2)}}</pre>
+                                <br/>
+                                <div style="text-align: right;">
+                                    <button class="button is-primary" v-if="!task.accepted" v-on:click="accept(task_id)">Accept</button class="button is-primary">
+                                    <button disabled class="button is-success" v-if="task.accepted">Accepted</button class="button is-primary">
+                                </div>
+                            </div>
+                        </article>
+                    </div>
+                    <div v-if="tab == 'data'">
+                        <table class="table is-fullwidth is-striped is-hoverable">
+                            <thead>
+                            <tr>
+                                <th>App Name</th>
+                                <th>Table Name</th>
+                                <th>Column Name</th>
+                                <th>Column Type</th>
+                                <th>Column Description</th>
+                            </tr>
+                            </thead>
+                            <tbody v-for="(app_column, index) in app_columns">
+                            <tr>
+                                <td>{{app_column.app_name}}</td>
+                                <td>{{app_column.table_name}}</td>
+                                <td>{{app_column.column_name}}</td>
+                                <td>{{app_column.column_type}}</td>
+                                <td>{{app_column.column_description}}</td>
+                            </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+    <script>
+        String.prototype.capitalize = function() {
+            return this.charAt(0).toUpperCase() + this.slice(1)
+        }
+        var vm = new Vue({
+            el: "#app",
+            data: {
+                tab: "tasks",
+                tasks: {},
+                app_columns: []
+            },
+            created: function() {
+                this.refresh()
+                setInterval(this.refresh, 1000);
+            },
+            methods: {
+                accept: function (task_id) {
+                    axios.get('/whitelist/' + task_id).then(function (response) {
+                        alert("Accepted!")
+                    });
+                    this.refresh()
+                },
+                refresh: function () {
+                    var self = this;
+                    axios.get('/app').then(function (response) {
+                        self.app_columns = response.data
+                    });
+                    axios.get('/tasks').then(function (response) {
+                        self.tasks = response.data
+                    });
+                }
+            }
+        })
+    </script>
+</body>
+</html>

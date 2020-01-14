@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, minimum-scale=1" />
 <meta name="generator" content="pdoc 0.7.1" />
-<title>tiresias.core API documentation</title>
+<title>tiresias.core.gradients API documentation</title>
 <meta name="description" content="" />
 <link href='https://cdnjs.cloudflare.com/ajax/libs/normalize/8.0.0/normalize.min.css' rel='stylesheet'>
 <link href='https://cdnjs.cloudflare.com/ajax/libs/10up-sanitize.css/8.0.0/sanitize.min.css' rel='stylesheet'>
@@ -17,90 +17,159 @@
 <main>
 <article id="content">
 <header>
-<h1 class="title">Module <code>tiresias.core</code></h1>
+<h1 class="title">Module <code>tiresias.core.gradients</code></h1>
 </header>
 <section id="section-intro">
 <details class="source">
 <summary>
 <span>Expand source code</span>
 </summary>
-<pre><code class="python">import pickle, codecs
+<pre><code class="python">import torch
+import numpy as np
 
-def b64_encode(obj):
+def get_gradients(model, epsilon, delta=0.01, max_norm=1.0):
     &#34;&#34;&#34;
-    Take an arbitrary pickle-able object and encode it as a base64 string which
-    can be transmitted as part of a JSON object.
+    This function extracts a differentially private copy of the gradients 
+    from a PyTorch model where the loss has already been backpropagated through
+    the neural network.
     &#34;&#34;&#34;
-    return codecs.encode(pickle.dumps(obj), &#34;base64&#34;).decode()
+    scale = np.sqrt(2 * np.log(1.25 / delta)) / epsilon
 
-def b64_decode(obj):
+    # Compute the gradient norm
+    total_norm = 0.0
+    for p in model.parameters():
+        if p.requires_grad:
+            total_norm += p.grad.data.norm(2).item() ** 2
+    total_norm = total_norm ** (1. / 2)
+
+    # Clip and add noise
+    gradients = []
+    for p in model.parameters():
+        if p.requires_grad:
+            grad = p.grad.data.clone()
+            grad /= max(1.0, total_norm / max_norm)
+            grad += torch.normal(
+                torch.zeros(p.grad.data.size()), 
+                torch.zeros(p.grad.data.size()) + scale * max_norm
+            )
+            gradients.append(grad)
+    return gradients
+
+def put_gradients(model, gradients):
     &#34;&#34;&#34;
-    Decode the given base64 string and attempt to unpickle it to recover the 
-    original Python object.
+    This function takes the gradients extracted by the `get_gradients` 
+    function and loads them back into the model.
     &#34;&#34;&#34;
-    return pickle.loads(codecs.decode(obj.encode(), &#34;base64&#34;))</code></pre>
+    for p, g in zip(model.parameters(), gradients):
+        if p.requires_grad:
+            p.grad = g
+
+def merge_gradients(list_of_gradients):
+    &#34;&#34;&#34;
+    This function takes a list of gradients (e.g. a list of the objects 
+    that are returned by the `get_gradients` function) and merges them into 
+    a single gradient update which can be passed to `put_gradients`.
+    &#34;&#34;&#34;
+    accumulator = list_of_gradients[0]
+    for gradients in list_of_gradients[1:]:
+        for i, g in enumerate(gradients):
+            accumulator[i] += g
+    for g in accumulator:
+        g /= len(list_of_gradients)
+    return accumulator</code></pre>
 </details>
 </section>
 <section>
-<h2 class="section-title" id="header-submodules">Sub-modules</h2>
-<dl>
-<dt><code class="name"><a title="tiresias.core.classification" href="classification.html">tiresias.core.classification</a></code></dt>
-<dd>
-<section class="desc"></section>
-</dd>
-<dt><code class="name"><a title="tiresias.core.gradients" href="gradients.html">tiresias.core.gradients</a></code></dt>
-<dd>
-<section class="desc"></section>
-</dd>
-<dt><code class="name"><a title="tiresias.core.mechanisms" href="mechanisms.html">tiresias.core.mechanisms</a></code></dt>
-<dd>
-<section class="desc"></section>
-</dd>
-<dt><code class="name"><a title="tiresias.core.regression" href="regression.html">tiresias.core.regression</a></code></dt>
-<dd>
-<section class="desc"></section>
-</dd>
-</dl>
 </section>
 <section>
 </section>
 <section>
 <h2 class="section-title" id="header-functions">Functions</h2>
 <dl>
-<dt id="tiresias.core.b64_decode"><code class="name flex">
-<span>def <span class="ident">b64_decode</span></span>(<span>obj)</span>
+<dt id="tiresias.core.gradients.get_gradients"><code class="name flex">
+<span>def <span class="ident">get_gradients</span></span>(<span>model, epsilon, delta=0.01, max_norm=1.0)</span>
 </code></dt>
 <dd>
-<section class="desc"><p>Decode the given base64 string and attempt to unpickle it to recover the
-original Python object.</p></section>
+<section class="desc"><p>This function extracts a differentially private copy of the gradients
+from a PyTorch model where the loss has already been backpropagated through
+the neural network.</p></section>
 <details class="source">
 <summary>
 <span>Expand source code</span>
 </summary>
-<pre><code class="python">def b64_decode(obj):
+<pre><code class="python">def get_gradients(model, epsilon, delta=0.01, max_norm=1.0):
     &#34;&#34;&#34;
-    Decode the given base64 string and attempt to unpickle it to recover the 
-    original Python object.
+    This function extracts a differentially private copy of the gradients 
+    from a PyTorch model where the loss has already been backpropagated through
+    the neural network.
     &#34;&#34;&#34;
-    return pickle.loads(codecs.decode(obj.encode(), &#34;base64&#34;))</code></pre>
+    scale = np.sqrt(2 * np.log(1.25 / delta)) / epsilon
+
+    # Compute the gradient norm
+    total_norm = 0.0
+    for p in model.parameters():
+        if p.requires_grad:
+            total_norm += p.grad.data.norm(2).item() ** 2
+    total_norm = total_norm ** (1. / 2)
+
+    # Clip and add noise
+    gradients = []
+    for p in model.parameters():
+        if p.requires_grad:
+            grad = p.grad.data.clone()
+            grad /= max(1.0, total_norm / max_norm)
+            grad += torch.normal(
+                torch.zeros(p.grad.data.size()), 
+                torch.zeros(p.grad.data.size()) + scale * max_norm
+            )
+            gradients.append(grad)
+    return gradients</code></pre>
 </details>
 </dd>
-<dt id="tiresias.core.b64_encode"><code class="name flex">
-<span>def <span class="ident">b64_encode</span></span>(<span>obj)</span>
+<dt id="tiresias.core.gradients.merge_gradients"><code class="name flex">
+<span>def <span class="ident">merge_gradients</span></span>(<span>list_of_gradients)</span>
 </code></dt>
 <dd>
-<section class="desc"><p>Take an arbitrary pickle-able object and encode it as a base64 string which
-can be transmitted as part of a JSON object.</p></section>
+<section class="desc"><p>This function takes a list of gradients (e.g. a list of the objects
+that are returned by the <a title="tiresias.core.gradients.get_gradients" href="#tiresias.core.gradients.get_gradients"><code>get_gradients()</code></a> function) and merges them into
+a single gradient update which can be passed to <a title="tiresias.core.gradients.put_gradients" href="#tiresias.core.gradients.put_gradients"><code>put_gradients()</code></a>.</p></section>
 <details class="source">
 <summary>
 <span>Expand source code</span>
 </summary>
-<pre><code class="python">def b64_encode(obj):
+<pre><code class="python">def merge_gradients(list_of_gradients):
     &#34;&#34;&#34;
-    Take an arbitrary pickle-able object and encode it as a base64 string which
-    can be transmitted as part of a JSON object.
+    This function takes a list of gradients (e.g. a list of the objects 
+    that are returned by the `get_gradients` function) and merges them into 
+    a single gradient update which can be passed to `put_gradients`.
     &#34;&#34;&#34;
-    return codecs.encode(pickle.dumps(obj), &#34;base64&#34;).decode()</code></pre>
+    accumulator = list_of_gradients[0]
+    for gradients in list_of_gradients[1:]:
+        for i, g in enumerate(gradients):
+            accumulator[i] += g
+    for g in accumulator:
+        g /= len(list_of_gradients)
+    return accumulator</code></pre>
+</details>
+</dd>
+<dt id="tiresias.core.gradients.put_gradients"><code class="name flex">
+<span>def <span class="ident">put_gradients</span></span>(<span>model, gradients)</span>
+</code></dt>
+<dd>
+<section class="desc"><p>This function takes the gradients extracted by the <a title="tiresias.core.gradients.get_gradients" href="#tiresias.core.gradients.get_gradients"><code>get_gradients()</code></a>
+function and loads them back into the model.</p></section>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">def put_gradients(model, gradients):
+    &#34;&#34;&#34;
+    This function takes the gradients extracted by the `get_gradients` 
+    function and loads them back into the model.
+    &#34;&#34;&#34;
+    for p, g in zip(model.parameters(), gradients):
+        if p.requires_grad:
+            p.grad = g</code></pre>
 </details>
 </dd>
 </dl>
@@ -116,21 +185,14 @@ can be transmitted as part of a JSON object.</p></section>
 <ul id="index">
 <li><h3>Super-module</h3>
 <ul>
-<li><code><a title="tiresias" href="../index.html">tiresias</a></code></li>
-</ul>
-</li>
-<li><h3><a href="#header-submodules">Sub-modules</a></h3>
-<ul>
-<li><code><a title="tiresias.core.classification" href="classification.html">tiresias.core.classification</a></code></li>
-<li><code><a title="tiresias.core.gradients" href="gradients.html">tiresias.core.gradients</a></code></li>
-<li><code><a title="tiresias.core.mechanisms" href="mechanisms.html">tiresias.core.mechanisms</a></code></li>
-<li><code><a title="tiresias.core.regression" href="regression.html">tiresias.core.regression</a></code></li>
+<li><code><a title="tiresias.core" href="index.html">tiresias.core</a></code></li>
 </ul>
 </li>
 <li><h3><a href="#header-functions">Functions</a></h3>
 <ul class="">
-<li><code><a title="tiresias.core.b64_decode" href="#tiresias.core.b64_decode">b64_decode</a></code></li>
-<li><code><a title="tiresias.core.b64_encode" href="#tiresias.core.b64_encode">b64_encode</a></code></li>
+<li><code><a title="tiresias.core.gradients.get_gradients" href="#tiresias.core.gradients.get_gradients">get_gradients</a></code></li>
+<li><code><a title="tiresias.core.gradients.merge_gradients" href="#tiresias.core.gradients.merge_gradients">merge_gradients</a></code></li>
+<li><code><a title="tiresias.core.gradients.put_gradients" href="#tiresias.core.gradients.put_gradients">put_gradients</a></code></li>
 </ul>
 </li>
 </ul>

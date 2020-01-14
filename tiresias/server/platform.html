@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Tiresias Platform</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <script src="https://unpkg.com/axios/dist/axios.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/vue/dist/vue.js"></script>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bulma@0.8.0/css/bulma.min.css">
+    <script defer src="https://use.fontawesome.com/releases/v5.3.1/js/all.js"></script>
+    <style>
+        #app {
+            padding: 1em;
+        }
+    </style>
+</head>
+<body>
+    <section class="hero is-dark">
+        <div class="hero-body">
+          <div class="container has-text-centered">
+            <h1 class="title">
+              Tiresias Platform Server
+            </h1>
+            <h2 class="subtitle">
+                An Open Source System for Privacy Preserving Machine Learning
+            </h2>
+          </div>
+        </div>
+      </section>
+    <section id="app">
+        <div class="container">
+            <div class="columns is-centered">
+                <div class="column is-two-thirds">
+                    <div v-if="Object.keys(tasks).length == 0">
+                        There are no tasks available at this time! Check back later.
+                    </div>
+                    <article v-for="(task, task_id) in tasks" class="message">
+                        <div class="message-header">
+                            {{task.type.capitalize()}} Task
+                            <span style="float:right;font-size:10px;user-select:all;cursor:pointer;">{{task_id}}</span>
+                        </div>
+                        <div class="message-body">
+                            <pre>{{JSON.stringify(task, null, 2)}}</pre>
+                            <div>
+                                <br/>
+                                <progress class="progress is-primary" v-bind:value="task.count" v-bind:max="task.min_count"></progress>
+                            </div>
+                        </div>
+                    </article>
+                </div>
+            </div>
+        </div>
+    </section>
+    <script>
+        String.prototype.capitalize = function() {
+            return this.charAt(0).toUpperCase() + this.slice(1)
+        }
+        var vm = new Vue({
+            el: "#app",
+            data: {
+                tasks: {}
+            },
+            created: function() {
+                var self = this;
+                var refresh = function () {
+                    axios.get('/all').then(function (response) {
+                        self.tasks = response.data
+                    });
+                }
+                refresh()
+                setInterval(refresh, 1000);
+            }
+        })
+    </script>
+</body>
+</html>

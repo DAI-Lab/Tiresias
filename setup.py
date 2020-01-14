@@ -20,10 +20,9 @@ dependency_links = [x.strip().replace('git+', '') for x in all_reqs if x.startsw
 setup(
     name='tiresias',
     version=__version__,
-    description='A differentially private data marketplace.',
+    description='An open source platform for privacy preserving machine learning.',
     long_description=long_description,
-    url='https://github.com/k15z/tiresias',
-    download_url='https://github.com/k15z/tiresias/tarball/' + __version__,
+    url='http://github.com/DAI-Lab/tiresias',
     license='BSD',
     classifiers=[
       'Development Status :: 3 - Alpha',
@@ -37,5 +36,5 @@ setup(
     install_requires=install_requires,
     dependency_links=dependency_links,
     author_email='kevz@mit.edu',
-    scripts=['scripts/tiresias-client', 'scripts/tiresias-server']
+    scripts=["scripts/tiresias", "scripts/tiresias-server"]
 )

@@ -16,14 +16,14 @@ def dict_factory(cursor, row):
         d[col[0]] = row[idx]
     return d
 
-def initialize(data_dir):
+def initialize(storage_dir):
     """
     This function creates the data directory if necessary and initializes the 
     metadata database.
     """
-    if not os.path.exists(data_dir):
-        os.makedirs(data_dir)
-    connection = sqlite3.connect(os.path.join(data_dir, "metadata.db"))
+    if not os.path.exists(storage_dir):
+        os.makedirs(storage_dir)
+    connection = sqlite3.connect(os.path.join(storage_dir, "metadata.db"))
     cursor = connection.cursor()
     cursor.executescript("""
         CREATE TABLE IF NOT EXISTS apps (app_name);
@@ -43,29 +43,11 @@ def initialize(data_dir):
     cursor.close()
     connection.close()
 
-def create_dummy_dataset(data_dir):
-    register_app(data_dir, "hello_world", {
-        "two_sum": {
-            "description": "A simple dataset for addition.",
-            "columns": {
-                "x1": {"type": "float", "description": "The first value to add."},
-                "x2": {"type": "float", "description": "The second value to add."},
-                "y": {"type": "float", "description": "The sum of the values."},
-            }
-        }
-    })
-    x1, x2 = random() * 100.0, random() * 10.0
-    insert_payload(data_dir, "hello_world", {
-        "two_sum": [
-            {"x1": x1, "x2": x2, "y": x1 + x2},
-        ]
-    })
-
-def app_columns(data_dir):
+def app_columns(storage_dir):
     """
     Return a list of dictionaries describing the columns that are being collected.
     """
-    connection = sqlite3.connect(os.path.join(data_dir, "metadata.db"))
+    connection = sqlite3.connect(os.path.join(storage_dir, "metadata.db"))
     connection.row_factory = dict_factory
 
     try:
@@ -78,18 +60,18 @@ def app_columns(data_dir):
 
     return rows
 
-def execute_sql(data_dir, sql):
+def execute_sql(storage_dir, sql):
     """
     Execute the given query on the database, using "<app_name>.<table_name>" to specify tables.
     """
-    connection = sqlite3.connect(os.path.join(data_dir, "metadata.db"))
+    connection = sqlite3.connect(os.path.join(storage_dir, "metadata.db"))
     connection.row_factory = dict_factory
     cursor = connection.cursor()
 
     try:
         cursor.execute("SELECT * FROM apps")
         for app in cursor.fetchall():
-            cursor.execute("ATTACH DATABASE '%s' AS %s" % (os.path.join(data_dir, app["app_name"] + ".db"), app["app_name"]))
+            cursor.execute("ATTACH DATABASE '%s' AS %s" % (os.path.join(storage_dir, app["app_name"] + ".db"), app["app_name"]))
 
         cursor.execute(sql)
         rows = cursor.fetchall()
@@ -113,7 +95,7 @@ def validate_schema(schema):
             assert column["type"] in ["int", "string", "float"], "Expected type to be in {int, string, float}"
             assert type(column["description"]) == str, "Expected description to be a string"
 
-def register_app(data_dir, app_name, schema):
+def register_app(storage_dir, app_name, schema):
     """
     Register an application, which is defined by an app_name and a schema, and create the 
     appropriate tables in the database. For example, a schema which defines two tables containing 
@@ -150,7 +132,7 @@ def register_app(data_dir, app_name, schema):
     validate_schema(schema)
 
     # Update the metadata database
-    connection = sqlite3.connect(os.path.join(data_dir, "metadata.db"))
+    connection = sqlite3.connect(os.path.join(storage_dir, "metadata.db"))
     cursor = connection.cursor()
     try:
         cursor.execute("SELECT * FROM apps WHERE app_name = ?", (app_name,))
@@ -168,12 +150,14 @@ def register_app(data_dir, app_name, schema):
 
     # Create the app database
     try:
-        connection = sqlite3.connect(os.path.join(data_dir, "%s.db" % app_name))
+        connection = sqlite3.connect(os.path.join(storage_dir, "%s.db" % app_name))
         cursor = connection.cursor()
         for table_name, table in schema.items():
             cursor.execute("CREATE TABLE %s (%s)" % (table_name, ",".join(table["columns"].keys())))
         cursor.close()
         connection.commit()
+    except:
+        raise
     finally:
         connection.close()
 
@@ -185,7 +169,7 @@ def validate_payload(payload):
         for row in rows:
             assert type(row) == dict, "Expected each row in the update to be a dictionary"
 
-def insert_payload(data_dir, app_name, payload):
+def insert_payload(storage_dir, app_name, payload):
     """
     The entire payload is considered a single transaction; for example, an update which inserts two 
     rows into `tableX` and one row into `tableY` is shown below:
@@ -202,8 +186,8 @@ def insert_payload(data_dir, app_name, payload):
     }
     ```
     """
-    assert os.path.exists(os.path.join(data_dir, "%s.db" % app_name)), "App not found."
-    connection = sqlite3.connect(os.path.join(data_dir, "%s.db" % app_name))
+    assert os.path.exists(os.path.join(storage_dir, "%s.db" % app_name)), "App not found."
+    connection = sqlite3.connect(os.path.join(storage_dir, "%s.db" % app_name))
     cursor = connection.cursor()
 
     try:
