@@ -35,6 +35,7 @@ from bottle import Bottle, request, response, static_file
 import tiresias.server as server
 import tiresias.server.remote
 from tiresias.client.handler import handle_task
+from tiresias.client.storage import execute_sql
 from tiresias.client.storage import initialize, app_columns, register_app, insert_payload
 
 def run(server_url, storage_dir, storage_port, policy):
@@ -68,6 +69,7 @@ def storage_server(storage_dir, storage_port, server_url, whitelist):
         response.content_type = &#34;application/json&#34;
         for task_id, task in tasks.items():
             task[&#34;accepted&#34;] = task_id in whitelist
+            task[&#34;preview&#34;] = execute_sql(storage_dir, task[&#34;featurizer&#34;])
         return tasks
 
     @api.route(&#34;/whitelist/&lt;task_id&gt;&#34;)
@@ -256,6 +258,7 @@ underlying SQLite databases.</p></section>
         response.content_type = &#34;application/json&#34;
         for task_id, task in tasks.items():
             task[&#34;accepted&#34;] = task_id in whitelist
+            task[&#34;preview&#34;] = execute_sql(storage_dir, task[&#34;featurizer&#34;])
         return tasks
 
     @api.route(&#34;/whitelist/&lt;task_id&gt;&#34;)

@@ -46,9 +46,108 @@ query_id = remote.create_task("http://localhost:3000/", {
     "featurizer": "SELECT malic_acid FROM dummy.wine",
     "aggregator": "median"
 })
-print(remote.fetch_task(server, query_id))
+print(remote.fetch_task("http://localhost:3000/", query_id))
 ```
 
 Note that this task requires a minimum of 10 users to complete; however, even if you don't 
 have that many users, you can still track the progress of the task using either the Python
 API or the web application.
+
+## Tasks
+
+### Basic Tasks
+This task would like to access your data by running <SQL>. Your data will be sent to the 
+Tiresias server, where it will be combined with at least <COUNT> other users data and 
+aggregated into a single <AGGREGATOR> value which will have noise added to make it 
+(<EPSILON>, <DELTA>) differentially private to reduce the risk that anyone can figure out
+your contribution to this task. Only this differentially private value will be released to 
+the data requester.
+
+```
+{
+    "type": "basic",
+    "epsilon": <FLOAT>,
+    "delta": <FLOAT>,
+    "min_count": <INT>,
+    "featurizer": <SQL>,
+    "aggregator": <AGGREGATOR>
+}
+```
+
+### Integrated Task
+This task would like to access your data by running <SQL>. Your data will be sent to the 
+Tiresias server, where it will be combined with at least <COUNT> other users data and 
+used to train a <MODEL> model to predict <OUTPUT>. This model will have noise added to it 
+to make it (<EPSILON>, <DELTA>) differentially private to reduce the risk that anyone can 
+figure out your contribution to this task. Only this differentially private model will be 
+released to the data requester.
+
+```
+{
+    "type": "integrated",
+    "epsilon": <FLOAT>,
+    "delta": <FLOAT>,
+    "featurizer": <SQL>,
+    "model": <MODEL>,
+    "inputs": [<VARNAME>, <VARNAME>, ...],
+    "output": <VARNAME>
+}
+```
+
+### Bounded Task
+This task would like to access your data by running <SQL>. Before sending your data to 
+the server, we will add noise to make it (<EPSILON>, <DELTA>) differentially private to 
+reduce the risk that anyone can figure out your contribution to this task.
+
+```
+{
+    "type": "bounded",
+    "epsilon": <FLOAT>,
+    "delta": <FLOAT>,
+    "featurizer": <SQL>,
+    "bounds": {
+        "<VARNAME>": {
+            "type": "<BOUND_TYPE>",
+            "default": <FINITE_VALUE>,
+            "values": [<FINITE_VALUE>, <FINITE_VALUE>],
+        }
+    }
+}
+```
+
+### Gradient Task
+This task would like to access your data by running <SQL> and the computing the gradients
+for a model. Note that your actual data will not be sent to the server, only the gradients, 
+and even then, we add noise to the gradients before sending it to make it (<EPSILON>, <DELTA>) 
+differentially private to reduce the risk that anyone can figure out your contribution to 
+this task.
+
+```
+{
+    "type": "gradient",
+    "epsilon": 10.0,
+    "delta": 1e-5,
+    "lr": 0.01,
+    "featurizer": "SELECT profile_picture, y FROM profile.example",
+    "model": ...,
+    "loss": b64_encode(torch.nn.functional.mse_loss),
+    "inputs": "profile_picture",
+    "input_type": "image",
+    "output": ["y"],
+}
+```
+
+```
+{
+    "type": "gradient",
+    "epsilon": 10.0,
+    "delta": 1e-5,
+    "lr": 0.01,
+    "featurizer": "SELECT x1, x2, y FROM profile.example",
+    "model": ...,
+    "loss": b64_encode(torch.nn.functional.cross_entropy_loss),
+    "inputs": ["x1", "x2"],
+    "input_type": "vector",
+    "output": ["y"],
+}
+```

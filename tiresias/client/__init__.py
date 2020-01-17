@@ -9,6 +9,7 @@ from bottle import Bottle, request, response, static_file
 import tiresias.server as server
 import tiresias.server.remote
 from tiresias.client.handler import handle_task
+from tiresias.client.storage import execute_sql
 from tiresias.client.storage import initialize, app_columns, register_app, insert_payload
 
 def run(server_url, storage_dir, storage_port, policy):
@@ -42,6 +43,7 @@ def storage_server(storage_dir, storage_port, server_url, whitelist):
         response.content_type = "application/json"
         for task_id, task in tasks.items():
             task["accepted"] = task_id in whitelist
+            task["preview"] = execute_sql(storage_dir, task["featurizer"])
         return tasks
 
     @api.route("/whitelist/<task_id>")

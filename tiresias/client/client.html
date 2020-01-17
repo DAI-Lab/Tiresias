@@ -47,14 +47,83 @@
                                 <span style="float:right;font-size:10px;user-select:all;cursor:pointer;">{{task_id}}</span>
                             </div>
                             <div class="message-body">
-                                <pre>{{JSON.stringify(task, null, 2)}}</pre>
+                                <ul>
+                                    <li><b>Type:</b> {{task["type"].capitalize()}} Task</li>
+                                    <li><b>Status:</b> {{task["status"].capitalize()}}</li>
+                                    <li><b>Privacy:</b> ({{task["epsilon"]}}, {{task["delta"]}})-DP</li>
+                                    <li><b>Featurizer:</b> <code>{{task["featurizer"]}}</code></li>
+                                    <li v-if="task['aggregator']"><b>Aggregator:</b> <code>{{task["aggregator"]}}</code></li>
+                                    <li v-if="task['model']"><b>Model:</b> <code>{{task["model"]}}</code></li>
+                                </ul>
+                                <br/>
+                                <div id="explanation">
+                                    <span v-if="task['type'] == 'basic'">
+                                        This task would like to access your data by running <code>{{task["featurizer"]}}</code>. Your data will be sent to the 
+                                            Tiresias server, where it will be combined with at least <code>{{task["min_count"]}}</code> other users data and 
+                                            aggregated into a single <code>{{task["aggregator"]}}</code> value which will have noise added to make it 
+                                            (<code>{{task["epsilon"]}}</code>, <code>{{task["delta"]}}</code>) differentially private to reduce the risk that anyone can figure out
+                                            your contribution to this task. Only this differentially private value will be released to 
+                                            the data requester.
+                                    </span>
+                                    <span v-if="task['type'] == 'integrated'">
+                                        This task would like to access your data by running <code>{{task["featurizer"]}}</code>. Your data will be sent to the 
+                                            Tiresias server, where it will be combined with at least <code>{{task["min_count"]}}</code> other users data and 
+                                            used to train a <code>{{task["model"]}}</code> model to predict <code>{{task["output"]}}</code>. This model will have noise added to it 
+                                            to make it (<code>{{task["epsilon"]}}</code>, <code>{{task["delta"]}}</code>) differentially private to reduce the risk that anyone can 
+                                            figure out your contribution to this task. Only this differentially private model will be 
+                                            released to the data requester.
+                                    </span>
+                                    <span v-if="task['type'] == 'bounded'">
+                                        This task would like to access your data by running <code>{{task["featurizer"]}}</code>. Before sending your data to 
+                                            the server, we will add noise to make it (<code>{{task["epsilon"]}}</code>, <code>{{task["delta"]}}</code>) differentially private to 
+                                            reduce the risk that anyone can figure out your contribution to this task.
+                                    </span>
+                                    <span v-if="task['type'] == 'gradient'">
+                                        This task would like to access your data by running <code>{{task["featurizer"]}}</code> and the computing the gradients
+                                            for a model. Note that your actual data will not be sent to the server, only the gradients, 
+                                            and even then, we add noise to the gradients before sending it to make it (<code>{{task["epsilon"]}}</code>, <code>{{task["delta"]}}</code>) 
+                                            differentially private to reduce the risk that anyone can figure out your contribution to 
+                                            this task.
+                                    </span>
+                                </div>
                                 <br/>
                                 <div style="text-align: right;">
-                                    <button class="button is-primary" v-if="!task.accepted" v-on:click="accept(task_id)">Accept</button class="button is-primary">
-                                    <button disabled class="button is-success" v-if="task.accepted">Accepted</button class="button is-primary">
+                                    <button class="button is-info is-small" v-on:click="showJSON('json', task)">View Task</button>
+                                    <button v-if="task.type != 'gradient'" class="button is-danger is-small" v-on:click="showJSON('preview', task['preview'])">Preview Data</button>
+                                    <button class="button is-primary is-small" v-if="!task.accepted" v-on:click="accept(task_id)">Accept Task</button>
+                                    <button disabled class="button is-success is-small" v-if="task.accepted">Accepted</button>
                                 </div>
                             </div>
                         </article>
+                        <div class="modal" v-bind:class="{'is-active': json}" >
+                            <div class="modal-background" v-on:click="closeJSON()"></div>
+                            <div class="modal-card">
+                                <header class="modal-card-head">
+                                  <p v-if="json.mode=='json'" class="modal-card-title">Task JSON</p>
+                                  <p v-if="json.mode=='preview'" class="modal-card-title">Data Preview</p>
+                                  <button class="delete" aria-label="close" v-on:click="closeJSON()"></button>
+                                </header>
+                                <section class="modal-card-body">
+                                    <div v-if="json.mode=='json'">
+                                        <pre>{{json.data}}</pre>
+                                    </div>
+                                    <div v-if="json.mode=='preview'" style="background-color: white; padding:1em;">
+                                        <table class="table is-fullwidth is-striped is-hoverable">
+                                            <thead>
+                                                <tr>
+                                                    <th v-for="(col, _) in json.data[0]">{{col}}</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                <tr v-for="(row, _) in json.data.slice(1)">
+                                                    <td v-for="(col, _) in row">{{col}}</td>
+                                                </tr>
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                </section>
+                            </div>
+                        </div>
                     </div>
                     <div v-if="tab == 'data'">
                         <table class="table is-fullwidth is-striped is-hoverable">
@@ -84,14 +153,15 @@
     </section>
     <script>
         String.prototype.capitalize = function() {
-            return this.charAt(0).toUpperCase() + this.slice(1)
+            return this.charAt(0).toUpperCase() + this.slice(1).toLowerCase()
         }
         var vm = new Vue({
             el: "#app",
             data: {
                 tab: "tasks",
+                json: false,
                 tasks: {},
-                app_columns: []
+                app_columns: [],
             },
             created: function() {
                 this.refresh()
@@ -112,6 +182,38 @@
                     axios.get('/tasks').then(function (response) {
                         self.tasks = response.data
                     });
+                },
+                showJSON: function (mode, json) {
+                    if (mode == "preview") {
+                        var header = Object.keys(json[0]);
+                        var rows = [header]
+                        for (var i = 0; i < json.length; i++) {
+                            var tmp = []
+                            for (var j = 0; j < header.length; j++) {
+                                tmp.push(json[i][header[j]])
+                            }
+                            rows.push(tmp)
+                        }
+                        this.json = {
+                            "mode": mode,
+                            "data": rows
+                        }
+                    } else if (mode == "json") {
+                        var obj = {}
+                        for (key in json) {
+                            if (key == "preview") {
+                                continue
+                            }
+                            obj[key] = json[key]
+                        }
+                        this.json = {
+                            "mode": mode,
+                            "data": JSON.stringify(obj, null, 2)
+                        }
+                    }
+                },
+                closeJSON: function (json) {
+                    this.json = false                    
                 }
             }
         })

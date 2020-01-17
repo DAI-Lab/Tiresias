@@ -40,6 +40,72 @@ def laplace_noise(x, sensitivity, epsilon):
     &#34;&#34;&#34;
     return np.random.laplace(loc=x, scale=sensitivity/epsilon)
 
+def approx_bounds(x, epsilon=1.0, num_bins=64):
+    &#34;&#34;&#34;
+    This function estimates the upper and lower bounds of the data using a 
+    modification of the histogram approach from [1].
+
+    [1] https://github.com/google/differential-privacy/
+    &#34;&#34;&#34;
+    upper = approx_upper_bound(x, epsilon, num_bins)
+    lower = -approx_upper_bound(-x, epsilon, num_bins)
+    return lower, upper
+
+def approx_upper_bound(x, epsilon=1.0, num_bins=1000):
+    scale, base = 1.0, 2
+    thresholds = []
+    thresholds += [-scale * (base ** (i-1)) for i in range(num_bins//2, 0, -1)]
+    thresholds += [0]
+    thresholds += [scale * (base ** i) for i in range(0, num_bins//2)]
+
+    cutoff = -np.log(2 - 2 * (1-1e-5)) / epsilon;
+    x = sorted(x.tolist())
+    for i in range(len(thresholds)-1, -1, -1):
+        count = 0
+        while len(x) &gt; 0 and x[-1] &gt;= thresholds[i]:
+            x.pop(-1)
+            count += 1
+        count += np.random.laplace(scale=1.0 / epsilon)
+        if count &gt;= cutoff:
+            return thresholds[i+1]
+    raise ValueError(&#34;Unable to find the bound.&#34;)
+
+def mean(x, epsilon, delta, bounds=False):
+    &#34;&#34;&#34;
+    This function computes the differentially private estimate of the average 
+    using the noisy average approch from [1]. If the bounds are not provided 
+    by the user, then they are estimated using the histogram approach from [2].
+
+    [1] Differential Privacy: From Theory to Practice
+    [2] https://github.com/google/differential-privacy/
+    &#34;&#34;&#34;
+    x = np.array(x)
+    if not bounds:
+        epsilon = epsilon / 2.0
+        bounds = approx_bounds(x, epsilon)
+    low, high = bounds
+    x = np.minimum(np.maximum(x, low), high)
+    noise = np.random.laplace() * (high - low) / epsilon
+    mean = (np.sum(x) + noise) / len(x)
+    return min(max(low, mean), high)
+
+def sum(x, epsilon, delta, bounds=False):
+    &#34;&#34;&#34;
+    This function computes the differentially private estimate of the sum. If 
+    the bounds are not provided by the user, then they are estimated using the 
+    histogram approach from [1].
+
+    [1] https://github.com/google/differential-privacy/
+    &#34;&#34;&#34;
+    x = np.array(x)
+    if not bounds:
+        epsilon = epsilon / 2.0
+        bounds = approx_bounds(x, epsilon)
+    low, high = bounds
+    x = np.minimum(np.maximum(x, low), high)
+    noise = np.random.laplace() * (high - low) / epsilon
+    return np.sum(x) + noise
+
 def median(x, epsilon, delta):
     &#34;&#34;&#34;
     This function computes the differentially private estimate of the median 
@@ -106,7 +172,7 @@ def sample_and_aggregate(x, func, epsilon, nb_partitions, delta):
         results.append(func(partition))
     return median(np.array(results), epsilon, delta)
 
-def mean(x, epsilon, delta):
+def mean_sample_and_aggregate(x, epsilon, delta):
     &#34;&#34;&#34;
     This function computes the differentially private estimate of the average 
     using the smooth sensitivity and sample and aggregate approach.
@@ -114,7 +180,7 @@ def mean(x, epsilon, delta):
     nb_partitions = int(np.sqrt(len(x)))
     return sample_and_aggregate(x, np.mean, epsilon, nb_partitions, delta)
 
-def sum(x, epsilon, delta):
+def sum_sample_and_aggregate(x, epsilon, delta):
     &#34;&#34;&#34;
     This function computes the differentially private estimate of the sum 
     using the smooth sensitivity and sample and aggregate approach.
@@ -171,6 +237,58 @@ def bounded_continuous(x, low, high, epsilon):
 <section>
 <h2 class="section-title" id="header-functions">Functions</h2>
 <dl>
+<dt id="tiresias.core.mechanisms.approx_bounds"><code class="name flex">
+<span>def <span class="ident">approx_bounds</span></span>(<span>x, epsilon=1.0, num_bins=64)</span>
+</code></dt>
+<dd>
+<section class="desc"><p>This function estimates the upper and lower bounds of the data using a
+modification of the histogram approach from [1].</p>
+<p>[1] <a href="https://github.com/google/differential-privacy/">https://github.com/google/differential-privacy/</a></p></section>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">def approx_bounds(x, epsilon=1.0, num_bins=64):
+    &#34;&#34;&#34;
+    This function estimates the upper and lower bounds of the data using a 
+    modification of the histogram approach from [1].
+
+    [1] https://github.com/google/differential-privacy/
+    &#34;&#34;&#34;
+    upper = approx_upper_bound(x, epsilon, num_bins)
+    lower = -approx_upper_bound(-x, epsilon, num_bins)
+    return lower, upper</code></pre>
+</details>
+</dd>
+<dt id="tiresias.core.mechanisms.approx_upper_bound"><code class="name flex">
+<span>def <span class="ident">approx_upper_bound</span></span>(<span>x, epsilon=1.0, num_bins=1000)</span>
+</code></dt>
+<dd>
+<section class="desc"></section>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">def approx_upper_bound(x, epsilon=1.0, num_bins=1000):
+    scale, base = 1.0, 2
+    thresholds = []
+    thresholds += [-scale * (base ** (i-1)) for i in range(num_bins//2, 0, -1)]
+    thresholds += [0]
+    thresholds += [scale * (base ** i) for i in range(0, num_bins//2)]
+
+    cutoff = -np.log(2 - 2 * (1-1e-5)) / epsilon;
+    x = sorted(x.tolist())
+    for i in range(len(thresholds)-1, -1, -1):
+        count = 0
+        while len(x) &gt; 0 and x[-1] &gt;= thresholds[i]:
+            x.pop(-1)
+            count += 1
+        count += np.random.laplace(scale=1.0 / epsilon)
+        if count &gt;= cutoff:
+            return thresholds[i+1]
+    raise ValueError(&#34;Unable to find the bound.&#34;)</code></pre>
+</details>
+</dd>
 <dt id="tiresias.core.mechanisms.bounded_continuous"><code class="name flex">
 <span>def <span class="ident">bounded_continuous</span></span>(<span>x, low, high, epsilon)</span>
 </code></dt>
@@ -273,7 +391,40 @@ given the sensitivity and epsilon parameters.</p></section>
 </details>
 </dd>
 <dt id="tiresias.core.mechanisms.mean"><code class="name flex">
-<span>def <span class="ident">mean</span></span>(<span>x, epsilon, delta)</span>
+<span>def <span class="ident">mean</span></span>(<span>x, epsilon, delta, bounds=False)</span>
+</code></dt>
+<dd>
+<section class="desc"><p>This function computes the differentially private estimate of the average
+using the noisy average approch from [1]. If the bounds are not provided
+by the user, then they are estimated using the histogram approach from [2].</p>
+<p>[1] Differential Privacy: From Theory to Practice
+[2] <a href="https://github.com/google/differential-privacy/">https://github.com/google/differential-privacy/</a></p></section>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">def mean(x, epsilon, delta, bounds=False):
+    &#34;&#34;&#34;
+    This function computes the differentially private estimate of the average 
+    using the noisy average approch from [1]. If the bounds are not provided 
+    by the user, then they are estimated using the histogram approach from [2].
+
+    [1] Differential Privacy: From Theory to Practice
+    [2] https://github.com/google/differential-privacy/
+    &#34;&#34;&#34;
+    x = np.array(x)
+    if not bounds:
+        epsilon = epsilon / 2.0
+        bounds = approx_bounds(x, epsilon)
+    low, high = bounds
+    x = np.minimum(np.maximum(x, low), high)
+    noise = np.random.laplace() * (high - low) / epsilon
+    mean = (np.sum(x) + noise) / len(x)
+    return min(max(low, mean), high)</code></pre>
+</details>
+</dd>
+<dt id="tiresias.core.mechanisms.mean_sample_and_aggregate"><code class="name flex">
+<span>def <span class="ident">mean_sample_and_aggregate</span></span>(<span>x, epsilon, delta)</span>
 </code></dt>
 <dd>
 <section class="desc"><p>This function computes the differentially private estimate of the average
@@ -282,7 +433,7 @@ using the smooth sensitivity and sample and aggregate approach.</p></section>
 <summary>
 <span>Expand source code</span>
 </summary>
-<pre><code class="python">def mean(x, epsilon, delta):
+<pre><code class="python">def mean_sample_and_aggregate(x, epsilon, delta):
     &#34;&#34;&#34;
     This function computes the differentially private estimate of the average 
     using the smooth sensitivity and sample and aggregate approach.
@@ -403,7 +554,37 @@ the differentially private median to aggregate the results.</p></section>
 </details>
 </dd>
 <dt id="tiresias.core.mechanisms.sum"><code class="name flex">
-<span>def <span class="ident">sum</span></span>(<span>x, epsilon, delta)</span>
+<span>def <span class="ident">sum</span></span>(<span>x, epsilon, delta, bounds=False)</span>
+</code></dt>
+<dd>
+<section class="desc"><p>This function computes the differentially private estimate of the sum. If
+the bounds are not provided by the user, then they are estimated using the
+histogram approach from [1].</p>
+<p>[1] <a href="https://github.com/google/differential-privacy/">https://github.com/google/differential-privacy/</a></p></section>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">def sum(x, epsilon, delta, bounds=False):
+    &#34;&#34;&#34;
+    This function computes the differentially private estimate of the sum. If 
+    the bounds are not provided by the user, then they are estimated using the 
+    histogram approach from [1].
+
+    [1] https://github.com/google/differential-privacy/
+    &#34;&#34;&#34;
+    x = np.array(x)
+    if not bounds:
+        epsilon = epsilon / 2.0
+        bounds = approx_bounds(x, epsilon)
+    low, high = bounds
+    x = np.minimum(np.maximum(x, low), high)
+    noise = np.random.laplace() * (high - low) / epsilon
+    return np.sum(x) + noise</code></pre>
+</details>
+</dd>
+<dt id="tiresias.core.mechanisms.sum_sample_and_aggregate"><code class="name flex">
+<span>def <span class="ident">sum_sample_and_aggregate</span></span>(<span>x, epsilon, delta)</span>
 </code></dt>
 <dd>
 <section class="desc"><p>This function computes the differentially private estimate of the sum
@@ -412,7 +593,7 @@ using the smooth sensitivity and sample and aggregate approach.</p></section>
 <summary>
 <span>Expand source code</span>
 </summary>
-<pre><code class="python">def sum(x, epsilon, delta):
+<pre><code class="python">def sum_sample_and_aggregate(x, epsilon, delta):
     &#34;&#34;&#34;
     This function computes the differentially private estimate of the sum 
     using the smooth sensitivity and sample and aggregate approach.
@@ -439,15 +620,19 @@ using the smooth sensitivity and sample and aggregate approach.</p></section>
 </li>
 <li><h3><a href="#header-functions">Functions</a></h3>
 <ul class="">
+<li><code><a title="tiresias.core.mechanisms.approx_bounds" href="#tiresias.core.mechanisms.approx_bounds">approx_bounds</a></code></li>
+<li><code><a title="tiresias.core.mechanisms.approx_upper_bound" href="#tiresias.core.mechanisms.approx_upper_bound">approx_upper_bound</a></code></li>
 <li><code><a title="tiresias.core.mechanisms.bounded_continuous" href="#tiresias.core.mechanisms.bounded_continuous">bounded_continuous</a></code></li>
 <li><code><a title="tiresias.core.mechanisms.count" href="#tiresias.core.mechanisms.count">count</a></code></li>
 <li><code><a title="tiresias.core.mechanisms.finite_categorical" href="#tiresias.core.mechanisms.finite_categorical">finite_categorical</a></code></li>
 <li><code><a title="tiresias.core.mechanisms.laplace_noise" href="#tiresias.core.mechanisms.laplace_noise">laplace_noise</a></code></li>
 <li><code><a title="tiresias.core.mechanisms.mean" href="#tiresias.core.mechanisms.mean">mean</a></code></li>
+<li><code><a title="tiresias.core.mechanisms.mean_sample_and_aggregate" href="#tiresias.core.mechanisms.mean_sample_and_aggregate">mean_sample_and_aggregate</a></code></li>
 <li><code><a title="tiresias.core.mechanisms.median" href="#tiresias.core.mechanisms.median">median</a></code></li>
 <li><code><a title="tiresias.core.mechanisms.median_gaussian" href="#tiresias.core.mechanisms.median_gaussian">median_gaussian</a></code></li>
 <li><code><a title="tiresias.core.mechanisms.sample_and_aggregate" href="#tiresias.core.mechanisms.sample_and_aggregate">sample_and_aggregate</a></code></li>
 <li><code><a title="tiresias.core.mechanisms.sum" href="#tiresias.core.mechanisms.sum">sum</a></code></li>
+<li><code><a title="tiresias.core.mechanisms.sum_sample_and_aggregate" href="#tiresias.core.mechanisms.sum_sample_and_aggregate">sum_sample_and_aggregate</a></code></li>
 </ul>
 </li>
 </ul>

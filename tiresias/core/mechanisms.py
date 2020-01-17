@@ -14,6 +14,63 @@ def laplace_noise(x, sensitivity, epsilon):
     """
     return np.random.laplace(loc=x, scale=sensitivity/epsilon)
 
+def approx_bounds(x, epsilon=1.0, scale=0.1, base=2, bins=128, p=0.99999):
+    """
+    This function estimates the upper and lower bounds of the data using a 
+    modification of the histogram approach from [1].
+
+    [1] https://github.com/google/differential-privacy/
+    """
+    threshold = -np.log(2 - 2 * p) / epsilon
+    cutoffs = scale * np.power(base, np.arange(0, bins//2))
+    cutoffs = (-cutoffs[::-1]).tolist() + [0] + cutoffs.tolist()
+
+    histogram = np.random.laplace(size=bins, scale=1.0 / epsilon)
+    x = sorted(x.tolist())
+    for i in range(len(cutoffs)-1, 0, -1):
+        while len(x) > 0 and x[-1] >= cutoffs[i-1]:
+            x.pop(-1)
+            histogram[i] += 1
+    histogram[0] += len(x)
+    has_value = (histogram > threshold).nonzero()[0]
+    return cutoffs[has_value[0]], cutoffs[has_value[-1]]
+
+def mean(x, epsilon, delta, bounds=False):
+    """
+    This function computes the differentially private estimate of the average 
+    using the noisy average approch from [1]. If the bounds are not provided 
+    by the user, then they are estimated using the histogram approach from [2].
+
+    [1] Differential Privacy: From Theory to Practice
+    [2] https://github.com/google/differential-privacy/
+    """
+    x = np.array(x)
+    if not bounds:
+        epsilon = epsilon / 2.0
+        bounds = approx_bounds(x, epsilon)
+    low, high = bounds
+    x = np.minimum(np.maximum(x, low), high)
+    noise = np.random.laplace() * (high - low) / epsilon
+    mean = (np.sum(x) + noise) / len(x)
+    return min(max(low, mean), high)
+
+def sum(x, epsilon, delta, bounds=False):
+    """
+    This function computes the differentially private estimate of the sum. If 
+    the bounds are not provided by the user, then they are estimated using the 
+    histogram approach from [1].
+
+    [1] https://github.com/google/differential-privacy/
+    """
+    x = np.array(x)
+    if not bounds:
+        epsilon = epsilon / 2.0
+        bounds = approx_bounds(x, epsilon)
+    low, high = bounds
+    x = np.minimum(np.maximum(x, low), high)
+    noise = np.random.laplace() * (high - low) / epsilon
+    return np.sum(x) + noise
+
 def median(x, epsilon, delta):
     """
     This function computes the differentially private estimate of the median 
@@ -80,7 +137,7 @@ def sample_and_aggregate(x, func, epsilon, nb_partitions, delta):
         results.append(func(partition))
     return median(np.array(results), epsilon, delta)
 
-def mean(x, epsilon, delta):
+def mean_sample_and_aggregate(x, epsilon, delta):
     """
     This function computes the differentially private estimate of the average 
     using the smooth sensitivity and sample and aggregate approach.
@@ -88,7 +145,7 @@ def mean(x, epsilon, delta):
     nb_partitions = int(np.sqrt(len(x)))
     return sample_and_aggregate(x, np.mean, epsilon, nb_partitions, delta)
 
-def sum(x, epsilon, delta):
+def sum_sample_and_aggregate(x, epsilon, delta):
     """
     This function computes the differentially private estimate of the sum 
     using the smooth sensitivity and sample and aggregate approach.
