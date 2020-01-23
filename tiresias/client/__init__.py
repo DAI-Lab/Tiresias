@@ -11,11 +11,12 @@ import tiresias.server.remote
 from tiresias.client.handler import handle_task
 from tiresias.client.storage import execute_sql
 from tiresias.client.storage import initialize, app_columns, register_app, insert_payload
+from tiresias.client.synthetic import create_synthetic_dataset
 
-def run(server_url, storage_dir, storage_port, policy):
+def run(server_url, storage_dir, storage_port, policy, synthetic):
     whitelist = set()
 
-    storage_thread = threading.Thread(target=storage_server, args=(storage_dir, storage_port, server_url, whitelist))
+    storage_thread = threading.Thread(target=storage_server, args=(storage_dir, storage_port, server_url, whitelist, synthetic))
     storage_thread.start()
     sleep(0.1)
 
@@ -26,10 +27,12 @@ def run(server_url, storage_dir, storage_port, policy):
     storage_thread.join()
     handler_thread.join()
 
-def storage_server(storage_dir, storage_port, server_url, whitelist):
+def storage_server(storage_dir, storage_port, server_url, whitelist, synthetic):
     api = Bottle()
     initialize(storage_dir)
     create_dummy_dataset(storage_dir)
+    if synthetic:
+        create_synthetic_dataset(storage_dir)
     api.config['storage_dir'] = storage_dir
 
     @api.route("/")

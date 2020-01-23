@@ -9,6 +9,13 @@ if __name__ == "__main__":
     parser.add_argument('--storage_dir', type=str, default="/tmp/tiresias", help="The target data directory.")
     parser.add_argument('--storage_port', type=int, default=8000, help="The port to listen on.")
     parser.add_argument('--policy', type=str, default="manual", help="manual | accept")
+    parser.add_argument('--synthetic', action='store_true')
     args = parser.parse_args()
     webbrowser.open('http://localhost:%s/' % args.storage_port, new=2)
-    client.run(server_url=args.server_url, storage_dir=args.storage_dir, storage_port=args.storage_port, policy=args.policy)
+    client.run(
+        server_url=args.server_url, 
+        storage_dir=args.storage_dir, 
+        storage_port=args.storage_port, 
+        policy=args.policy, 
+        synthetic=args.synthetic
+    )
