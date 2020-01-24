@@ -6,6 +6,7 @@
     <script src="https://unpkg.com/axios/dist/axios.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/vue/dist/vue.js"></script>
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bulma@0.8.0/css/bulma.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/sql-formatter@2.3.3/dist/sql-formatter.js"></script>
     <script defer src="https://use.fontawesome.com/releases/v5.3.1/js/all.js"></script>
     <style>
         #app {
@@ -51,14 +52,14 @@
                                     <li><b>Type:</b> {{task["type"].capitalize()}} Task</li>
                                     <li><b>Status:</b> {{task["status"].capitalize()}}</li>
                                     <li><b>Privacy:</b> ({{task["epsilon"]}}, {{task["delta"]}})-DP</li>
-                                    <li><b>Featurizer:</b> <code>{{task["featurizer"]}}</code></li>
                                     <li v-if="task['aggregator']"><b>Aggregator:</b> <code>{{task["aggregator"]}}</code></li>
                                     <li v-if="task['model']"><b>Model:</b> <code>{{task["model"]}}</code></li>
+                                    <li><b>Featurizer:</b> <pre style="margin-top:3px;">{{task["featurizer"]}}</pre></li>
                                 </ul>
                                 <br/>
                                 <div id="explanation">
                                     <span v-if="task['type'] == 'basic'">
-                                        This task would like to access your data by running <code>{{task["featurizer"]}}</code>. Your data will be sent to the 
+                                        This task would like to access your data by running the above featurizer. Your data will be sent to the 
                                             Tiresias server, where it will be combined with at least <code>{{task["min_count"]}}</code> other users data and 
                                             aggregated into a single <code>{{task["aggregator"]}}</code> value which will have noise added to make it 
                                             (<code>{{task["epsilon"]}}</code>, <code>{{task["delta"]}}</code>) differentially private to reduce the risk that anyone can figure out
@@ -66,7 +67,7 @@
                                             the data requester.
                                     </span>
                                     <span v-if="task['type'] == 'integrated'">
-                                        This task would like to access your data by running <code>{{task["featurizer"]}}</code>. Your data will be sent to the 
+                                        This task would like to access your data by running the above featurizer. Your data will be sent to the 
                                             Tiresias server, where it will be combined with at least <code>{{task["min_count"]}}</code> other users data and 
                                             used to train a <code>{{task["model"]}}</code> model to predict <code>{{task["output"]}}</code>. This model will have noise added to it 
                                             to make it (<code>{{task["epsilon"]}}</code>, <code>{{task["delta"]}}</code>) differentially private to reduce the risk that anyone can 
@@ -74,12 +75,12 @@
                                             released to the data requester.
                                     </span>
                                     <span v-if="task['type'] == 'bounded'">
-                                        This task would like to access your data by running <code>{{task["featurizer"]}}</code>. Before sending your data to 
+                                        This task would like to access your data by running the above featurizer. Before sending your data to 
                                             the server, we will add noise to make it (<code>{{task["epsilon"]}}</code>, <code>{{task["delta"]}}</code>) differentially private to 
                                             reduce the risk that anyone can figure out your contribution to this task.
                                     </span>
                                     <span v-if="task['type'] == 'gradient'">
-                                        This task would like to access your data by running <code>{{task["featurizer"]}}</code> and the computing the gradients
+                                        This task would like to access your data by running the above featurizer and the computing the gradients
                                             for a model. Note that your actual data will not be sent to the server, only the gradients, 
                                             and even then, we add noise to the gradients before sending it to make it (<code>{{task["epsilon"]}}</code>, <code>{{task["delta"]}}</code>) 
                                             differentially private to reduce the risk that anyone can figure out your contribution to 
@@ -181,6 +182,9 @@
                     });
                     axios.get('/tasks').then(function (response) {
                         self.tasks = response.data
+                        for (var task_id in self.tasks) {
+                            self.tasks[task_id]["featurizer"] = sqlFormatter.format(self.tasks[task_id]["featurizer"])
+                        }
                     });
                 },
                 showJSON: function (mode, json) {

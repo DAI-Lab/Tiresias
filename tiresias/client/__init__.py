@@ -13,14 +13,14 @@ from tiresias.client.storage import execute_sql
 from tiresias.client.storage import initialize, app_columns, register_app, insert_payload
 from tiresias.client.synthetic import create_synthetic_dataset
 
-def run(server_url, storage_dir, storage_port, policy, synthetic):
+def run(server_url, storage_dir, storage_port, accept_all, synthetic):
     whitelist = set()
 
     storage_thread = threading.Thread(target=storage_server, args=(storage_dir, storage_port, server_url, whitelist, synthetic))
     storage_thread.start()
     sleep(0.1)
 
-    handler_thread = threading.Thread(target=task_handler, args=(server_url, storage_dir, whitelist, policy))
+    handler_thread = threading.Thread(target=task_handler, args=(server_url, storage_dir, whitelist, accept_all))
     handler_thread.start()
     sleep(0.1)
 
@@ -85,7 +85,7 @@ def storage_server(storage_dir, storage_port, server_url, whitelist, synthetic):
 
     api.run(host="localhost", port=storage_port, quiet=True)
 
-def task_handler(server_url, storage_dir, whitelist, policy):
+def task_handler(server_url, storage_dir, whitelist, accept_all):
     processed = set()
     while True:
         try:
@@ -93,13 +93,14 @@ def task_handler(server_url, storage_dir, whitelist, policy):
             for id, task in tasks.items():
                 if id in processed:
                     continue
-                if id in whitelist or policy == "accept":
+                if id in whitelist or accept_all:
                     result, err = handle_task(storage_dir, task)
                     if not err:
                         server.remote.approve_task(server_url, id, result)
                     else:
                         print(err)
                     processed.add(id)
+                    whitelist.add(id)
         except requests.exceptions.ConnectionError:
             print("The server at %s is offline; retrying in 1s." % server_url)
             sleep(1.0)

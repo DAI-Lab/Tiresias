@@ -48,7 +48,7 @@ class Platform(object):
                 result, err = handle_task(self._tasks[tid], self._payloads[tid])
                 if err:
                     self._tasks[tid]["status"] = State.ERROR
-                    self._tasks[tid]["result"] = str(err)
+                    self._tasks[tid]["result"] = repr(err)
                 else:
                     self._tasks[tid]["result"] = b64_encode(result)
                     self._tasks[tid]["status"] = State.COMPLETE
