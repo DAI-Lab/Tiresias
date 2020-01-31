@@ -8,7 +8,7 @@ import tiresias.client.handler as handler
 TEST_PORT = 8000 + randint(0, 1000)
 
 def test_storage_server(tmpdir):
-    storage_server = Process(target=client.storage_server, args=(tmpdir, TEST_PORT, "", set()))
+    storage_server = Process(target=client.storage_server, args=(tmpdir, TEST_PORT, "", set(), False))
     storage_server.start()
     sleep(0.1)
 

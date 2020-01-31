@@ -1,5 +1,5 @@
 import torch
-from random import random
+from random import random, choice
 from pytest import approx
 import tiresias.client as client
 from tiresias.server import handler
@@ -30,6 +30,40 @@ def test_handle_integrated():
         "x0": random(),
         "x1": random(),
         "y": random(),
+    }] for _ in range(100)]
+    result = handler.handle_integrated(task, data)
+    assert result.predict
+
+def test_handle_integrated_2():
+    task = {
+        "type": "integrated",
+        "epsilon": 10.0,
+        "featurizer": "SELECT x1, x2, y FROM profile.example",
+        "model": "GaussianNB",
+        "inputs": ["x0", "x1"],
+        "output": "y"
+    }
+    data = [[{
+        "x0": random(),
+        "x1": random(),
+        "y": choice([0, 1]),
+    }] for _ in range(100)]
+    result = handler.handle_integrated(task, data)
+    assert result.predict
+
+def test_handle_integrated_3():
+    task = {
+        "type": "integrated",
+        "epsilon": 10.0,
+        "featurizer": "SELECT x1, x2, y FROM profile.example",
+        "model": "LogisticRegression",
+        "inputs": ["x0", "x1"],
+        "output": "y"
+    }
+    data = [[{
+        "x0": random(),
+        "x1": random(),
+        "y": choice([0, 1]),
     }] for _ in range(100)]
     result = handler.handle_integrated(task, data)
     assert result.predict

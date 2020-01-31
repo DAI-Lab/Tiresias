@@ -14,26 +14,36 @@ def laplace_noise(x, sensitivity, epsilon):
     """
     return np.random.laplace(loc=x, scale=sensitivity/epsilon)
 
-def approx_bounds(x, epsilon=1.0, scale=0.1, base=2, bins=128, p=0.99999):
+def approximate_bounds(x, epsilon=1.0, scale=0.1, base=2, bins=128, p=0.99999):
     """
     This function estimates the upper and lower bounds of the data using a 
     modification of the histogram approach from [1].
 
     [1] https://github.com/google/differential-privacy/
     """
+    # Find `threshold` such that `P(x < threshold) = p`
+    # where x ~ Laplace(1.0 / epsilon).
     threshold = -np.log(2 - 2 * p) / epsilon
-    cutoffs = scale * np.power(base, np.arange(0, bins//2))
+    
+    # To produce N bins, we need N-1 cutoffs
+    #    ...|...|...|...
+    # where bin[i] corresponds to (cutoff[i-1], cutoff[i])
+    cutoffs = scale * np.power(base, np.arange(0, bins//2-1))
     cutoffs = (-cutoffs[::-1]).tolist() + [0] + cutoffs.tolist()
-
+    
+    # Assign each value to a bin in the log histogram
     histogram = np.random.laplace(size=bins, scale=1.0 / epsilon)
     x = sorted(x.tolist())
-    for i in range(len(cutoffs)-1, 0, -1):
-        while len(x) > 0 and x[-1] >= cutoffs[i-1]:
-            x.pop(-1)
+    for i in range(bins-1):
+        while len(x) > 0 and x[0] < cutoffs[i]:
+            x.pop(0)
             histogram[i] += 1
-    histogram[0] += len(x)
+    histogram[-1] += len(x)
+    
+    # Get the bins that are above the threshold
     has_value = (histogram > threshold).nonzero()[0]
-    return cutoffs[has_value[0]], cutoffs[has_value[-1]]
+    first, last = has_value[0] - 1, has_value[-1]
+    return cutoffs[first], cutoffs[last]
 
 def mean(x, epsilon, delta, bounds=False):
     """
@@ -47,7 +57,7 @@ def mean(x, epsilon, delta, bounds=False):
     x = np.array(x)
     if not bounds:
         epsilon = epsilon / 2.0
-        bounds = approx_bounds(x, epsilon)
+        bounds = approximate_bounds(x, epsilon)
     low, high = bounds
     x = np.minimum(np.maximum(x, low), high)
     noise = np.random.laplace() * (high - low) / epsilon
@@ -65,7 +75,7 @@ def sum(x, epsilon, delta, bounds=False):
     x = np.array(x)
     if not bounds:
         epsilon = epsilon / 2.0
-        bounds = approx_bounds(x, epsilon)
+        bounds = approximate_bounds(x, epsilon)
     low, high = bounds
     x = np.minimum(np.maximum(x, low), high)
     noise = np.random.laplace() * (high - low) / epsilon
