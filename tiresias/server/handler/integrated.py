@@ -1,6 +1,6 @@
 import numpy as np
 from tiresias.core.regression import LinearRegression
-from tiresias.core.classification import LogisticRegression, GaussianNB
+from tiresias.core.classification import LogisticRegression, GaussianNB, TiresiasClassifier
 
 def handle_integrated(task, data):
     rows = []
@@ -21,6 +21,11 @@ def handle_integrated(task, data):
 
     elif task["model"] == "LinearRegression":
         clf = LinearRegression(epsilon=task["epsilon"])
+        clf.fit(x, y)
+        return clf
+
+    elif task["model"] == "Classification":
+        clf = TiresiasClassifier(epsilon=task["epsilon"])
         clf.fit(x, y)
         return clf
 
