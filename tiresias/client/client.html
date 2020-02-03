@@ -12,6 +12,10 @@
         #app {
             padding: 1em;
         }
+
+        .message-body li {
+            margin-bottom: 0.5em;
+        }
     </style>
 </head>
 <body>
@@ -35,29 +39,46 @@
                         <ul>
                             <li v-bind:class="{'is-active': (tab=='tasks')}" v-on:click="tab='tasks'"><a>Open Tasks</a></li>
                             <li v-bind:class="{'is-active': (tab=='accepted')}" v-on:click="tab='accepted'"><a>Accepted Tasks</a></li>
+                            <li v-bind:class="{'is-active': (tab=='rejected')}" v-on:click="tab='rejected'"><a>Rejected Tasks</a></li>
                             <li v-bind:class="{'is-active': (tab=='data')}" v-on:click="tab='data'"><a>Personal Data Store</a></li>
                         </ul>
                     </div>
-                    <div v-if="tab == 'tasks' || tab == 'accepted'">
-                        <div v-if="Object.keys(tasks).length == 0">
-                            There are no tasks available at this time! Check back later.
-                        </div>
-                        <article v-for="(task, task_id) in tasks" class="message" v-if="(task.accepted && tab=='accepted') || (!task.accepted && tab=='tasks')">
+                    <div v-if="tab == 'tasks' || tab == 'accepted' || tab == 'rejected'">
+                        <article v-for="(task, task_id) in tasks" class="message" v-if="(task.accepted && tab=='accepted') || (task.rejected && tab=='rejected') || (!task.accepted && !task.rejected && tab=='tasks')">
                             <div class="message-header">
-                                {{task.type.capitalize()}} Task
+                                <span v-if="task.name">{{task.name}}</span>
+                                <span v-if="!task.name">{{task.type.capitalize()}} Task</span v-if="task.name">
                                 <span style="float:right;font-size:10px;user-select:all;cursor:pointer;">{{task_id}}</span>
                             </div>
                             <div class="message-body">
                                 <ul>
                                     <li><b>Type:</b> {{task["type"].capitalize()}} Task</li>
-                                    <li><b>Status:</b> {{task["status"].capitalize()}}</li>
-                                    <li><b>Privacy:</b> ({{task["epsilon"]}}, {{task["delta"]}})-DP</li>
+                                    <li>
+                                        <span v-if="task['type'] == 'integrated' || task['type'] == 'basic'"><b>Server:</b> Trusted - Your data will be anonymized by the server.</span>
+                                        <span v-if="task['type'] == 'bounded' || task['type'] == 'gradient'"><b>Server:</b> Trustless - Your data will be anonymized prior to transmission.</span>
+                                    </li>
                                     <li v-if="task['aggregator']"><b>Aggregator:</b> <code>{{task["aggregator"]}}</code></li>
                                     <li v-if="task['model']"><b>Model:</b> <code>{{task["model"]}}</code></li>
+                                    <li v-if="task['bounds']"><b>Bounds:</b> Each of your features will be clipped to the following set/range of values
+                                        <ul style="margin-left:1em;">
+                                            <li v-for="(bounds, var_name) in task['bounds']">
+                                                <b>{{var_name}}</b>: 
+                                                <span v-if="bounds['type'] == 'set'">{{bounds['values']}}</span>
+                                                <span v-if="bounds['type'] == 'range'">({{bounds['low']}}, {{bounds['high']}})</span>
+                                            </li>
+                                       </ul>
+                                    </li>
                                     <li><b>Featurizer:</b> <pre style="margin-top:3px;">{{task["featurizer"]}}</pre></li>
+                                    <li><b>Privacy Level:</b> 
+                                        This task offers <code>({{task["epsilon"]}}, {{task["delta"]}})</code>-differential privacy. 
+                                        If you accept the task, the requestor who receives the output of this task will 
+                                        be no more than <code>{{Math.exp(task["epsilon"]).toFixed(2)}}</code> times more likely to be 
+                                        able to identify you than if you do not accept the task; this guarantee holds with at 
+                                        least <code>{{(100.0-task["delta"]*100.0)}}%</code> probability.
+                                    </li>
                                 </ul>
-                                <br/>
                                 <div id="explanation">
+                                    <b>Description:</b>
                                     <span v-if="task['type'] == 'basic'">
                                         This task would like to access your data by running the above featurizer. Your data will be sent to the 
                                             Tiresias server, where it will be combined with at least <code>{{task["min_count"]}}</code> other users data and 
@@ -87,15 +108,22 @@
                                             this task.
                                     </span>
                                 </div>
-                                <br/>
+                                <div style="margin-top:1.0em;margin-bottom:1.0em;">
+                                    <progress class="progress is-success" v-bind:value="task.count" v-bind:max="task.min_count"></progress>
+                                    <p style="text-align:center;font-size:0.7em;margin-top:-3.55em;">STATUS: {{Math.round(100*task.count/task.min_count)}}% COMPLETE</p>
+                                </div>
                                 <div style="text-align: right;">
-                                    <button class="button is-info is-small" v-on:click="showJSON('json', task)">View Task</button>
-                                    <button v-if="task.type != 'gradient'" class="button is-danger is-small" v-on:click="showJSON('preview', task['preview'])">Preview Data</button>
+                                    <button class="button is-link is-small" v-on:click="showJSON('json', task)">View JSON</button>
+                                    <button v-if="task.type != 'gradient'" class="button is-info is-small" v-on:click="showJSON('preview', task['preview'])">Preview Data</button>
                                     <button class="button is-primary is-small" v-if="!task.accepted" v-on:click="accept(task_id)">Accept Task</button>
+                                    <button class="button is-danger is-small" v-if="!task.rejected" v-on:click="reject(task_id)">Reject Task</button>
                                     <button disabled class="button is-success is-small" v-if="task.accepted">Accepted</button>
                                 </div>
                             </div>
                         </article>
+                        <div class="notification">
+                            There are no more tasks available at this time! Check back later.
+                        </div>
                         <div class="modal" v-bind:class="{'is-active': json}" >
                             <div class="modal-background" v-on:click="closeJSON()"></div>
                             <div class="modal-card">
@@ -130,11 +158,11 @@
                         <table class="table is-fullwidth is-striped is-hoverable">
                             <thead>
                             <tr>
-                                <th>App Name</th>
-                                <th>Table Name</th>
-                                <th>Column Name</th>
-                                <th>Column Type</th>
-                                <th>Column Description</th>
+                                <th>App</th>
+                                <th>Table</th>
+                                <th>Name</th>
+                                <th>Type</th>
+                                <th>Description</th>
                             </tr>
                             </thead>
                             <tbody v-for="(app_column, index) in app_columns">
@@ -170,10 +198,16 @@
             },
             methods: {
                 accept: function (task_id) {
-                    axios.get('/whitelist/' + task_id).then(function (response) {
-                        alert("Accepted!")
+                    if (confirm("Are you sure you want to contribute your data to this task?")) {
+                        axios.get('/whitelist/' + task_id).then(function (response) {
+                            this.refresh()
+                        });
+                    }
+                },
+                reject: function (task_id) {
+                    axios.get('/blacklist/' + task_id).then(function (response) {
+                        this.refresh()
                     });
-                    this.refresh()
                 },
                 refresh: function () {
                     var self = this;

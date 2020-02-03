@@ -24,9 +24,22 @@
 <summary>
 <span>Expand source code</span>
 </summary>
-<pre><code class="python">import diffprivlib.models as dp
+<pre><code class="python">import numpy as np
+import diffprivlib.models as dp
+from tiresias.core.mechanisms import approximate_bounds
 
-LinearRegression = dp.LinearRegression</code></pre>
+class LinearRegression(dp.LinearRegression):
+
+    def fit(self, X, y, sample_weight=None):
+        if not self.data_norm:
+            self.epsilon /= 2.0
+            row_norms = np.linalg.norm(X, axis=1)
+            _, max_norm = approximate_bounds(row_norms, self.epsilon)
+            self.data_norm = max_norm
+            for i in range(X.shape[0]):
+                if np.linalg.norm(X[i]) &gt; self.data_norm:
+                    X[i] = X[i] * (self.data_norm - 1e-5) / np.linalg.norm(X[i])
+        return super().fit(X, y, sample_weight=sample_weight)</code></pre>
 </details>
 </section>
 <section>
@@ -36,6 +49,132 @@ LinearRegression = dp.LinearRegression</code></pre>
 <section>
 </section>
 <section>
+<h2 class="section-title" id="header-classes">Classes</h2>
+<dl>
+<dt id="tiresias.core.regression.LinearRegression"><code class="flex name class">
+<span>class <span class="ident">LinearRegression</span></span>
+<span>(</span><span>epsilon=1.0, data_norm=None, range_X=None, range_y=None, fit_intercept=True, copy_X=True, **unused_args)</span>
+</code></dt>
+<dd>
+<section class="desc"><p>Ordinary least squares Linear Regression with differential privacy.</p>
+<p>LinearRegression fits a linear model with coefficients w = (w1, &hellip;, wp) to minimize the residual sum of squares
+between the observed targets in the dataset, and the targets predicted by the linear approximation. Differential
+privacy is guaranteed with respect to the training sample.</p>
+<p>Differential privacy is achieved by adding noise to the second moment matrix using the :class:<code>.Wishart</code> mechanism.
+This method is demonstrated in
+[She15]<em>, but our implementation takes inspiration from the use of the Wishart
+distribution in
+[IS16]</em> to achieve a strict differential privacy guarantee.</p>
+<h2 id="parameters">Parameters</h2>
+<dl>
+<dt><strong><code>epsilon</code></strong> :&ensp;<code>float</code>, optional, default <code>1.0</code></dt>
+<dd>Privacy parameter :math:<code>\epsilon</code>.</dd>
+<dt><strong><code>data_norm</code></strong> :&ensp;<code>float</code>, default: <code>None</code></dt>
+<dd>
+<p>The max l2 norm of any row of the concatenated dataset A = [X; y].
+This defines the spread of data that will be
+protected by differential privacy.</p>
+<p>If not specified, the max norm is taken from the data when <code>.fit()</code> is first called, but will result in a
+:class:<code>.PrivacyLeakWarning</code>, as it reveals information about the data. To preserve differential privacy fully,
+<code>data_norm</code> should be selected independently of the data, i.e. with domain knowledge.</p>
+</dd>
+<dt><strong><code>range_X</code></strong> :&ensp;<code>array_like</code></dt>
+<dd>
+<p>Range of each feature of the training sample X. Its non-private equivalent is np.ptp(X, axis=0).</p>
+<p>If not specified, the range is taken from the data when <code>.fit()</code> is first called, but will result in a
+:class:<code>.PrivacyLeakWarning</code>, as it reveals information about the data. To preserve differential privacy fully,
+<code>range_X</code> should be selected independently of the data, i.e. with domain knowledge.</p>
+</dd>
+<dt><strong><code>range_y</code></strong> :&ensp;<code>array_like</code></dt>
+<dd>Same as <code>range_X</code>, but for the training label set <code>y</code>.</dd>
+<dt><strong><code>fit_intercept</code></strong> :&ensp;<code>bool</code>, optional, default <code>True</code></dt>
+<dd>Whether to calculate the intercept for this model. If set to False, no intercept will be used in calculations
+(i.e. data is expected to be centered).</dd>
+<dt><strong><code>copy_X</code></strong> :&ensp;<code>bool</code>, optional, default <code>True</code></dt>
+<dd>If True, X will be copied; else, it may be overwritten.</dd>
+</dl>
+<h2 id="attributes">Attributes</h2>
+<dl>
+<dt><strong><code>coef_</code></strong> :&ensp;<code>array</code> of <code>shape</code> (<code>n_features</code>, ) or (<code>n_targets</code>, <code>n_features</code>)</dt>
+<dd>Estimated coefficients for the linear regression problem. If multiple targets are passed during the fit (y 2D),
+this is a 2D array of shape (n_targets, n_features), while if only one target is passed, this is a 1D array of
+length n_features.</dd>
+<dt><strong><code>rank_</code></strong> :&ensp;<code>int</code></dt>
+<dd>Rank of matrix <code>X</code>.</dd>
+<dt><strong><code>singular_</code></strong> :&ensp;<code>array</code> of <code>shape</code> (<code>min</code>(<code>X</code>, <code>y</code>),)</dt>
+<dd>Singular values of <code>X</code>.</dd>
+<dt><strong><code>intercept_</code></strong> :&ensp;<code>float</code> or <code>array</code> of <code>shape</code> of (<code>n_targets</code>,)</dt>
+<dd>Independent term in the linear model. Set to 0.0 if <code>fit_intercept = False</code>.</dd>
+</dl>
+<h2 id="references">References</h2>
+<p>.. [She15] Sheffet, Or. "Private approximations of the 2nd-moment matrix using existing techniques in linear
+regression." arXiv preprint arXiv:1507.00056 (2015).</p>
+<p>.. [IS16] Imtiaz, Hafiz, and Anand D. Sarwate. "Symmetric matrix perturbation for differentially-private principal
+component analysis." In 2016 IEEE International Conference on Acoustics, Speech and Signal Processing (ICASSP),
+pp. 2339-2343. IEEE, 2016.</p></section>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">class LinearRegression(dp.LinearRegression):
+
+    def fit(self, X, y, sample_weight=None):
+        if not self.data_norm:
+            self.epsilon /= 2.0
+            row_norms = np.linalg.norm(X, axis=1)
+            _, max_norm = approximate_bounds(row_norms, self.epsilon)
+            self.data_norm = max_norm
+            for i in range(X.shape[0]):
+                if np.linalg.norm(X[i]) &gt; self.data_norm:
+                    X[i] = X[i] * (self.data_norm - 1e-5) / np.linalg.norm(X[i])
+        return super().fit(X, y, sample_weight=sample_weight)</code></pre>
+</details>
+<h3>Ancestors</h3>
+<ul class="hlist">
+<li>diffprivlib.models.linear_regression.LinearRegression</li>
+<li>sklearn.linear_model.base.LinearRegression</li>
+<li>sklearn.linear_model.base.LinearModel</li>
+<li>abc.NewBase</li>
+<li>sklearn.base.BaseEstimator</li>
+<li>sklearn.base.RegressorMixin</li>
+</ul>
+<h3>Methods</h3>
+<dl>
+<dt id="tiresias.core.regression.LinearRegression.fit"><code class="name flex">
+<span>def <span class="ident">fit</span></span>(<span>self, X, y, sample_weight=None)</span>
+</code></dt>
+<dd>
+<section class="desc"><p>Fit linear model.</p>
+<h2 id="parameters">Parameters</h2>
+<dl>
+<dt><strong><code>X</code></strong> :&ensp;<code>array</code>-<code>like</code> or <code>sparse</code> <code>matrix</code>, <code>shape</code> (<code>n_samples</code>, <code>n_features</code>)</dt>
+<dd>Training data</dd>
+<dt><strong><code>y</code></strong> :&ensp;<code>array_like</code>, <code>shape</code> (<code>n_samples</code>, <code>n_targets</code>)</dt>
+<dd>Target values. Will be cast to X's dtype if necessary</dd>
+<dt><strong><code>sample_weight</code></strong> :&ensp;<code>ignored</code></dt>
+<dd>Ignored by diffprivlib. Present for consistency with sklearn API.</dd>
+</dl>
+<h2 id="returns">Returns</h2>
+<p>self : returns an instance of self.</p></section>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">def fit(self, X, y, sample_weight=None):
+    if not self.data_norm:
+        self.epsilon /= 2.0
+        row_norms = np.linalg.norm(X, axis=1)
+        _, max_norm = approximate_bounds(row_norms, self.epsilon)
+        self.data_norm = max_norm
+        for i in range(X.shape[0]):
+            if np.linalg.norm(X[i]) &gt; self.data_norm:
+                X[i] = X[i] * (self.data_norm - 1e-5) / np.linalg.norm(X[i])
+    return super().fit(X, y, sample_weight=sample_weight)</code></pre>
+</details>
+</dd>
+</dl>
+</dd>
+</dl>
 </section>
 </article>
 <nav id="sidebar">
@@ -47,6 +186,16 @@ LinearRegression = dp.LinearRegression</code></pre>
 <li><h3>Super-module</h3>
 <ul>
 <li><code><a title="tiresias.core" href="index.html">tiresias.core</a></code></li>
+</ul>
+</li>
+<li><h3><a href="#header-classes">Classes</a></h3>
+<ul>
+<li>
+<h4><code><a title="tiresias.core.regression.LinearRegression" href="#tiresias.core.regression.LinearRegression">LinearRegression</a></code></h4>
+<ul class="">
+<li><code><a title="tiresias.core.regression.LinearRegression.fit" href="#tiresias.core.regression.LinearRegression.fit">fit</a></code></li>
+</ul>
+</li>
 </ul>
 </li>
 </ul>

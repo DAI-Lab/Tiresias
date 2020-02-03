@@ -26,7 +26,7 @@
 </summary>
 <pre><code class="python">import numpy as np
 from tiresias.core.regression import LinearRegression
-from tiresias.core.classification import LogisticRegression, GaussianNB
+from tiresias.core.classification import LogisticRegression, GaussianNB, TiresiasClassifier
 
 def handle_integrated(task, data):
     rows = []
@@ -47,6 +47,11 @@ def handle_integrated(task, data):
 
     elif task[&#34;model&#34;] == &#34;LinearRegression&#34;:
         clf = LinearRegression(epsilon=task[&#34;epsilon&#34;])
+        clf.fit(x, y)
+        return clf
+
+    elif task[&#34;model&#34;] == &#34;Classification&#34;:
+        clf = TiresiasClassifier(epsilon=task[&#34;epsilon&#34;])
         clf.fit(x, y)
         return clf
 
@@ -89,6 +94,11 @@ def handle_integrated(task, data):
 
     elif task[&#34;model&#34;] == &#34;LinearRegression&#34;:
         clf = LinearRegression(epsilon=task[&#34;epsilon&#34;])
+        clf.fit(x, y)
+        return clf
+
+    elif task[&#34;model&#34;] == &#34;Classification&#34;:
+        clf = TiresiasClassifier(epsilon=task[&#34;epsilon&#34;])
         clf.fit(x, y)
         return clf
 

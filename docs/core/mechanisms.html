@@ -40,35 +40,36 @@ def laplace_noise(x, sensitivity, epsilon):
     &#34;&#34;&#34;
     return np.random.laplace(loc=x, scale=sensitivity/epsilon)
 
-def approx_bounds(x, epsilon=1.0, num_bins=64):
+def approximate_bounds(x, epsilon=1.0, scale=0.1, base=2, bins=128, p=0.99999):
     &#34;&#34;&#34;
     This function estimates the upper and lower bounds of the data using a 
     modification of the histogram approach from [1].
 
     [1] https://github.com/google/differential-privacy/
     &#34;&#34;&#34;
-    upper = approx_upper_bound(x, epsilon, num_bins)
-    lower = -approx_upper_bound(-x, epsilon, num_bins)
-    return lower, upper
-
-def approx_upper_bound(x, epsilon=1.0, num_bins=1000):
-    scale, base = 1.0, 2
-    thresholds = []
-    thresholds += [-scale * (base ** (i-1)) for i in range(num_bins//2, 0, -1)]
-    thresholds += [0]
-    thresholds += [scale * (base ** i) for i in range(0, num_bins//2)]
-
-    cutoff = -np.log(2 - 2 * (1-1e-5)) / epsilon;
+    # Find `threshold` such that `P(x &lt; threshold) = p`
+    # where x ~ Laplace(1.0 / epsilon).
+    threshold = -np.log(2 - 2 * p) / epsilon
+    
+    # To produce N bins, we need N-1 cutoffs
+    #    ...|...|...|...
+    # where bin[i] corresponds to (cutoff[i-1], cutoff[i])
+    cutoffs = scale * np.power(base, np.arange(0, bins//2-1))
+    cutoffs = (-cutoffs[::-1]).tolist() + [0] + cutoffs.tolist()
+    
+    # Assign each value to a bin in the log histogram
+    histogram = np.random.laplace(size=bins, scale=1.0 / epsilon)
     x = sorted(x.tolist())
-    for i in range(len(thresholds)-1, -1, -1):
-        count = 0
-        while len(x) &gt; 0 and x[-1] &gt;= thresholds[i]:
-            x.pop(-1)
-            count += 1
-        count += np.random.laplace(scale=1.0 / epsilon)
-        if count &gt;= cutoff:
-            return thresholds[i+1]
-    raise ValueError(&#34;Unable to find the bound.&#34;)
+    for i in range(bins-1):
+        while len(x) &gt; 0 and x[0] &lt; cutoffs[i]:
+            x.pop(0)
+            histogram[i] += 1
+    histogram[-1] += len(x)
+    
+    # Get the bins that are above the threshold
+    has_value = (histogram &gt; threshold).nonzero()[0]
+    first, last = has_value[0] - 1, has_value[-1]
+    return cutoffs[first], cutoffs[last]
 
 def mean(x, epsilon, delta, bounds=False):
     &#34;&#34;&#34;
@@ -82,7 +83,7 @@ def mean(x, epsilon, delta, bounds=False):
     x = np.array(x)
     if not bounds:
         epsilon = epsilon / 2.0
-        bounds = approx_bounds(x, epsilon)
+        bounds = approximate_bounds(x, epsilon)
     low, high = bounds
     x = np.minimum(np.maximum(x, low), high)
     noise = np.random.laplace() * (high - low) / epsilon
@@ -100,7 +101,7 @@ def sum(x, epsilon, delta, bounds=False):
     x = np.array(x)
     if not bounds:
         epsilon = epsilon / 2.0
-        bounds = approx_bounds(x, epsilon)
+        bounds = approximate_bounds(x, epsilon)
     low, high = bounds
     x = np.minimum(np.maximum(x, low), high)
     noise = np.random.laplace() * (high - low) / epsilon
@@ -237,8 +238,8 @@ def bounded_continuous(x, low, high, epsilon):
 <section>
 <h2 class="section-title" id="header-functions">Functions</h2>
 <dl>
-<dt id="tiresias.core.mechanisms.approx_bounds"><code class="name flex">
-<span>def <span class="ident">approx_bounds</span></span>(<span>x, epsilon=1.0, num_bins=64)</span>
+<dt id="tiresias.core.mechanisms.approximate_bounds"><code class="name flex">
+<span>def <span class="ident">approximate_bounds</span></span>(<span>x, epsilon=1.0, scale=0.1, base=2, bins=128, p=0.99999)</span>
 </code></dt>
 <dd>
 <section class="desc"><p>This function estimates the upper and lower bounds of the data using a
@@ -248,45 +249,36 @@ modification of the histogram approach from [1].</p>
 <summary>
 <span>Expand source code</span>
 </summary>
-<pre><code class="python">def approx_bounds(x, epsilon=1.0, num_bins=64):
+<pre><code class="python">def approximate_bounds(x, epsilon=1.0, scale=0.1, base=2, bins=128, p=0.99999):
     &#34;&#34;&#34;
     This function estimates the upper and lower bounds of the data using a 
     modification of the histogram approach from [1].
 
     [1] https://github.com/google/differential-privacy/
     &#34;&#34;&#34;
-    upper = approx_upper_bound(x, epsilon, num_bins)
-    lower = -approx_upper_bound(-x, epsilon, num_bins)
-    return lower, upper</code></pre>
-</details>
-</dd>
-<dt id="tiresias.core.mechanisms.approx_upper_bound"><code class="name flex">
-<span>def <span class="ident">approx_upper_bound</span></span>(<span>x, epsilon=1.0, num_bins=1000)</span>
-</code></dt>
-<dd>
-<section class="desc"></section>
-<details class="source">
-<summary>
-<span>Expand source code</span>
-</summary>
-<pre><code class="python">def approx_upper_bound(x, epsilon=1.0, num_bins=1000):
-    scale, base = 1.0, 2
-    thresholds = []
-    thresholds += [-scale * (base ** (i-1)) for i in range(num_bins//2, 0, -1)]
-    thresholds += [0]
-    thresholds += [scale * (base ** i) for i in range(0, num_bins//2)]
-
-    cutoff = -np.log(2 - 2 * (1-1e-5)) / epsilon;
+    # Find `threshold` such that `P(x &lt; threshold) = p`
+    # where x ~ Laplace(1.0 / epsilon).
+    threshold = -np.log(2 - 2 * p) / epsilon
+    
+    # To produce N bins, we need N-1 cutoffs
+    #    ...|...|...|...
+    # where bin[i] corresponds to (cutoff[i-1], cutoff[i])
+    cutoffs = scale * np.power(base, np.arange(0, bins//2-1))
+    cutoffs = (-cutoffs[::-1]).tolist() + [0] + cutoffs.tolist()
+    
+    # Assign each value to a bin in the log histogram
+    histogram = np.random.laplace(size=bins, scale=1.0 / epsilon)
     x = sorted(x.tolist())
-    for i in range(len(thresholds)-1, -1, -1):
-        count = 0
-        while len(x) &gt; 0 and x[-1] &gt;= thresholds[i]:
-            x.pop(-1)
-            count += 1
-        count += np.random.laplace(scale=1.0 / epsilon)
-        if count &gt;= cutoff:
-            return thresholds[i+1]
-    raise ValueError(&#34;Unable to find the bound.&#34;)</code></pre>
+    for i in range(bins-1):
+        while len(x) &gt; 0 and x[0] &lt; cutoffs[i]:
+            x.pop(0)
+            histogram[i] += 1
+    histogram[-1] += len(x)
+    
+    # Get the bins that are above the threshold
+    has_value = (histogram &gt; threshold).nonzero()[0]
+    first, last = has_value[0] - 1, has_value[-1]
+    return cutoffs[first], cutoffs[last]</code></pre>
 </details>
 </dd>
 <dt id="tiresias.core.mechanisms.bounded_continuous"><code class="name flex">
@@ -415,7 +407,7 @@ by the user, then they are estimated using the histogram approach from [2].</p>
     x = np.array(x)
     if not bounds:
         epsilon = epsilon / 2.0
-        bounds = approx_bounds(x, epsilon)
+        bounds = approximate_bounds(x, epsilon)
     low, high = bounds
     x = np.minimum(np.maximum(x, low), high)
     noise = np.random.laplace() * (high - low) / epsilon
@@ -576,7 +568,7 @@ histogram approach from [1].</p>
     x = np.array(x)
     if not bounds:
         epsilon = epsilon / 2.0
-        bounds = approx_bounds(x, epsilon)
+        bounds = approximate_bounds(x, epsilon)
     low, high = bounds
     x = np.minimum(np.maximum(x, low), high)
     noise = np.random.laplace() * (high - low) / epsilon
@@ -620,8 +612,7 @@ using the smooth sensitivity and sample and aggregate approach.</p></section>
 </li>
 <li><h3><a href="#header-functions">Functions</a></h3>
 <ul class="">
-<li><code><a title="tiresias.core.mechanisms.approx_bounds" href="#tiresias.core.mechanisms.approx_bounds">approx_bounds</a></code></li>
-<li><code><a title="tiresias.core.mechanisms.approx_upper_bound" href="#tiresias.core.mechanisms.approx_upper_bound">approx_upper_bound</a></code></li>
+<li><code><a title="tiresias.core.mechanisms.approximate_bounds" href="#tiresias.core.mechanisms.approximate_bounds">approximate_bounds</a></code></li>
 <li><code><a title="tiresias.core.mechanisms.bounded_continuous" href="#tiresias.core.mechanisms.bounded_continuous">bounded_continuous</a></code></li>
 <li><code><a title="tiresias.core.mechanisms.count" href="#tiresias.core.mechanisms.count">count</a></code></li>
 <li><code><a title="tiresias.core.mechanisms.finite_categorical" href="#tiresias.core.mechanisms.finite_categorical">finite_categorical</a></code></li>

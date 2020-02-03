@@ -14,25 +14,26 @@ from tiresias.client.storage import initialize, app_columns, register_app, inser
 from tiresias.client.synthetic import create_synthetic_dataset
 
 def run(server_url, storage_dir, storage_port, accept_all, synthetic):
-    whitelist = set()
+    whitelist, blacklist = set(), set()
 
-    storage_thread = threading.Thread(target=storage_server, args=(storage_dir, storage_port, server_url, whitelist, synthetic))
+    storage_thread = threading.Thread(target=storage_server, args=(storage_dir, storage_port, server_url, whitelist, blacklist, synthetic))
     storage_thread.start()
     sleep(0.1)
 
-    handler_thread = threading.Thread(target=task_handler, args=(server_url, storage_dir, whitelist, accept_all))
+    handler_thread = threading.Thread(target=task_handler, args=(server_url, storage_dir, whitelist, blacklist, accept_all))
     handler_thread.start()
     sleep(0.1)
 
     storage_thread.join()
     handler_thread.join()
 
-def storage_server(storage_dir, storage_port, server_url, whitelist, synthetic):
+def storage_server(storage_dir, storage_port, server_url, whitelist, blacklist, synthetic):
     api = Bottle()
     initialize(storage_dir)
-    create_dummy_dataset(storage_dir)
     if synthetic:
         create_synthetic_dataset(storage_dir)
+    else:
+        create_dummy_dataset(storage_dir)
     api.config['storage_dir'] = storage_dir
 
     @api.route("/")
@@ -44,14 +45,22 @@ def storage_server(storage_dir, storage_port, server_url, whitelist, synthetic):
     def _tasks():
         tasks = tiresias.server.remote.list_tasks(server_url)
         response.content_type = "application/json"
-        for task_id, task in tasks.items():
+        for task_id, task in list(tasks.items()):
             task["accepted"] = task_id in whitelist
+            task["rejected"] = task_id in blacklist
             task["preview"] = execute_sql(storage_dir, task["featurizer"])
         return tasks
 
     @api.route("/whitelist/<task_id>")
     def _whitelist_task(task_id):
         whitelist.add(task_id)
+        if task_id in blacklist:
+            blacklist.remove(task_id)
+        return ""
+
+    @api.route("/blacklist/<task_id>")
+    def _blacklist_task(task_id):
+        blacklist.add(task_id)
         return ""
 
     @api.route("/app")
@@ -83,15 +92,18 @@ def storage_server(storage_dir, storage_port, server_url, whitelist, synthetic):
         insert_payload(api.config['storage_dir'], app_name, payload)
         return ""
 
-    api.run(host="localhost", port=storage_port, quiet=True)
+    if synthetic:
+        api.run(host="0.0.0.0", port=storage_port, quiet=True)
+    else:
+        api.run(host="localhost", port=storage_port, quiet=True)
 
-def task_handler(server_url, storage_dir, whitelist, accept_all):
+def task_handler(server_url, storage_dir, whitelist, blacklist, accept_all):
     processed = set()
     while True:
         try:
             tasks = server.remote.list_tasks(server_url)
             for id, task in tasks.items():
-                if id in processed:
+                if id in processed or id in blacklist:
                     continue
                 if id in whitelist or accept_all:
                     result, err = handle_task(storage_dir, task)

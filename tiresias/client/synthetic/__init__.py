@@ -36,6 +36,8 @@ def sample_screen_time(profile):
         {"application_name": "Chrome", "application_type": "browser"},
         {"application_name": "Safari", "application_type": "browser"},
         {"application_name": "Firefox", "application_type": "browser"},
+        {"application_name": "Microsoft Edge", "application_type": "browser"},
+        {"application_name": "Internet Explorer", "application_type": "browser"},
         {"application_name": "VSCode", "application_type": "development"},
         {"application_name": "Terminal", "application_type": "development"},
         {"application_name": "iTerm", "application_type": "development"},
@@ -45,7 +47,7 @@ def sample_screen_time(profile):
     ]
     payload["events"] = []
     df = pd.read_csv(os.path.join(os.path.dirname(__file__), "domains.csv"))
-    for _ in range(randint(1, 10)):
+    for _ in range(randint(1, 100)):
         timestamp = time() + randint(0, 10000)
         application_name = choice(payload["types"])["application_name"]
         payload["events"].append({
@@ -81,8 +83,8 @@ def create_synthetic_dataset(storage_dir):
         "history": {
             "description": "",
             "columns": {
-                "timestamp": {"type": "float", "description": ""},
-                "domain": {"type": "float", "description": ""},
+                "timestamp": {"type": "float", "description": "When the website was opened"},
+                "domain": {"type": "float", "description": "The domain (i.e. everything up to `.com`, `.net`, etc.)"},
             }
         },
     })
@@ -92,16 +94,16 @@ def create_synthetic_dataset(storage_dir):
         "events": {
             "description": "",
             "columns": {
-                "timestamp": {"type": "float", "description": ""},
-                "event_type": {"type": "string", "description": ""},
-                "application_name": {"type": "string", "description": ""},
+                "timestamp": {"type": "float", "description": "When the event occurred."},
+                "event_type": {"type": "string", "description": "Whether the application was opened or closed."},
+                "application_name": {"type": "string", "description": "Standardized name for the application."},
             }
         },
         "types": {
             "description": "",
             "columns": {
-                "application_name": {"type": "string", "description": ""},
-                "application_type": {"type": "string", "description": ""},
+                "application_name": {"type": "string", "description": "Standardized name for the application."},
+                "application_type": {"type": "string", "description": "Whether the application is for web browsing, software development, or communicaation."},
             }
         },
     })

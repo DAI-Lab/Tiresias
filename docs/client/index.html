@@ -37,25 +37,28 @@ import tiresias.server.remote
 from tiresias.client.handler import handle_task
 from tiresias.client.storage import execute_sql
 from tiresias.client.storage import initialize, app_columns, register_app, insert_payload
+from tiresias.client.synthetic import create_synthetic_dataset
 
-def run(server_url, storage_dir, storage_port, policy):
+def run(server_url, storage_dir, storage_port, accept_all, synthetic):
     whitelist = set()
 
-    storage_thread = threading.Thread(target=storage_server, args=(storage_dir, storage_port, server_url, whitelist))
+    storage_thread = threading.Thread(target=storage_server, args=(storage_dir, storage_port, server_url, whitelist, synthetic))
     storage_thread.start()
     sleep(0.1)
 
-    handler_thread = threading.Thread(target=task_handler, args=(server_url, storage_dir, whitelist, policy))
+    handler_thread = threading.Thread(target=task_handler, args=(server_url, storage_dir, whitelist, accept_all))
     handler_thread.start()
     sleep(0.1)
 
     storage_thread.join()
     handler_thread.join()
 
-def storage_server(storage_dir, storage_port, server_url, whitelist):
+def storage_server(storage_dir, storage_port, server_url, whitelist, synthetic):
     api = Bottle()
     initialize(storage_dir)
     create_dummy_dataset(storage_dir)
+    if synthetic:
+        create_synthetic_dataset(storage_dir)
     api.config[&#39;storage_dir&#39;] = storage_dir
 
     @api.route(&#34;/&#34;)
@@ -108,7 +111,7 @@ def storage_server(storage_dir, storage_port, server_url, whitelist):
 
     api.run(host=&#34;localhost&#34;, port=storage_port, quiet=True)
 
-def task_handler(server_url, storage_dir, whitelist, policy):
+def task_handler(server_url, storage_dir, whitelist, accept_all):
     processed = set()
     while True:
         try:
@@ -116,13 +119,14 @@ def task_handler(server_url, storage_dir, whitelist, policy):
             for id, task in tasks.items():
                 if id in processed:
                     continue
-                if id in whitelist or policy == &#34;accept&#34;:
+                if id in whitelist or accept_all:
                     result, err = handle_task(storage_dir, task)
                     if not err:
                         server.remote.approve_task(server_url, id, result)
                     else:
                         print(err)
                     processed.add(id)
+                    whitelist.add(id)
         except requests.exceptions.ConnectionError:
             print(&#34;The server at %s is offline; retrying in 1s.&#34; % server_url)
             sleep(1.0)
@@ -164,6 +168,10 @@ def create_dummy_dataset(storage_dir):
 <dd>
 <section class="desc"><p>This module provides functions for storing and retrieving data from a the
 underlying SQLite databases.</p></section>
+</dd>
+<dt><code class="name"><a title="tiresias.client.synthetic" href="synthetic/index.html">tiresias.client.synthetic</a></code></dt>
+<dd>
+<section class="desc"></section>
 </dd>
 </dl>
 </section>
@@ -209,7 +217,7 @@ underlying SQLite databases.</p></section>
 <section class="desc"><p>random() -&gt; x in the interval [0, 1).</p></section>
 </dd>
 <dt id="tiresias.client.run"><code class="name flex">
-<span>def <span class="ident">run</span></span>(<span>server_url, storage_dir, storage_port, policy)</span>
+<span>def <span class="ident">run</span></span>(<span>server_url, storage_dir, storage_port, accept_all, synthetic)</span>
 </code></dt>
 <dd>
 <section class="desc"></section>
@@ -217,14 +225,14 @@ underlying SQLite databases.</p></section>
 <summary>
 <span>Expand source code</span>
 </summary>
-<pre><code class="python">def run(server_url, storage_dir, storage_port, policy):
+<pre><code class="python">def run(server_url, storage_dir, storage_port, accept_all, synthetic):
     whitelist = set()
 
-    storage_thread = threading.Thread(target=storage_server, args=(storage_dir, storage_port, server_url, whitelist))
+    storage_thread = threading.Thread(target=storage_server, args=(storage_dir, storage_port, server_url, whitelist, synthetic))
     storage_thread.start()
     sleep(0.1)
 
-    handler_thread = threading.Thread(target=task_handler, args=(server_url, storage_dir, whitelist, policy))
+    handler_thread = threading.Thread(target=task_handler, args=(server_url, storage_dir, whitelist, accept_all))
     handler_thread.start()
     sleep(0.1)
 
@@ -233,7 +241,7 @@ underlying SQLite databases.</p></section>
 </details>
 </dd>
 <dt id="tiresias.client.storage_server"><code class="name flex">
-<span>def <span class="ident">storage_server</span></span>(<span>storage_dir, storage_port, server_url, whitelist)</span>
+<span>def <span class="ident">storage_server</span></span>(<span>storage_dir, storage_port, server_url, whitelist, synthetic)</span>
 </code></dt>
 <dd>
 <section class="desc"></section>
@@ -241,10 +249,12 @@ underlying SQLite databases.</p></section>
 <summary>
 <span>Expand source code</span>
 </summary>
-<pre><code class="python">def storage_server(storage_dir, storage_port, server_url, whitelist):
+<pre><code class="python">def storage_server(storage_dir, storage_port, server_url, whitelist, synthetic):
     api = Bottle()
     initialize(storage_dir)
     create_dummy_dataset(storage_dir)
+    if synthetic:
+        create_synthetic_dataset(storage_dir)
     api.config[&#39;storage_dir&#39;] = storage_dir
 
     @api.route(&#34;/&#34;)
@@ -299,7 +309,7 @@ underlying SQLite databases.</p></section>
 </details>
 </dd>
 <dt id="tiresias.client.task_handler"><code class="name flex">
-<span>def <span class="ident">task_handler</span></span>(<span>server_url, storage_dir, whitelist, policy)</span>
+<span>def <span class="ident">task_handler</span></span>(<span>server_url, storage_dir, whitelist, accept_all)</span>
 </code></dt>
 <dd>
 <section class="desc"></section>
@@ -307,7 +317,7 @@ underlying SQLite databases.</p></section>
 <summary>
 <span>Expand source code</span>
 </summary>
-<pre><code class="python">def task_handler(server_url, storage_dir, whitelist, policy):
+<pre><code class="python">def task_handler(server_url, storage_dir, whitelist, accept_all):
     processed = set()
     while True:
         try:
@@ -315,13 +325,14 @@ underlying SQLite databases.</p></section>
             for id, task in tasks.items():
                 if id in processed:
                     continue
-                if id in whitelist or policy == &#34;accept&#34;:
+                if id in whitelist or accept_all:
                     result, err = handle_task(storage_dir, task)
                     if not err:
                         server.remote.approve_task(server_url, id, result)
                     else:
                         print(err)
                     processed.add(id)
+                    whitelist.add(id)
         except requests.exceptions.ConnectionError:
             print(&#34;The server at %s is offline; retrying in 1s.&#34; % server_url)
             sleep(1.0)
@@ -349,6 +360,7 @@ underlying SQLite databases.</p></section>
 <li><code><a title="tiresias.client.handler" href="handler/index.html">tiresias.client.handler</a></code></li>
 <li><code><a title="tiresias.client.remote" href="remote.html">tiresias.client.remote</a></code></li>
 <li><code><a title="tiresias.client.storage" href="storage.html">tiresias.client.storage</a></code></li>
+<li><code><a title="tiresias.client.synthetic" href="synthetic/index.html">tiresias.client.synthetic</a></code></li>
 </ul>
 </li>
 <li><h3><a href="#header-functions">Functions</a></h3>

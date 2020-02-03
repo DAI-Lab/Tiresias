@@ -4,6 +4,8 @@ An open source system for privacy preserving machine learning.
 To get started with `Tiresias`, run the following commands to install the library.
 
 ```
+conda create --name tiresias -y python=3.6 anaconda
+conda activate tiresias
 pip install -e .
 pytest
 ```

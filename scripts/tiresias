@@ -2,6 +2,7 @@
 import argparse
 import webbrowser
 import tiresias.client as client
+from time import sleep
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()

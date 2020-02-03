@@ -74,7 +74,7 @@ class Platform(object):
                 result, err = handle_task(self._tasks[tid], self._payloads[tid])
                 if err:
                     self._tasks[tid][&#34;status&#34;] = State.ERROR
-                    self._tasks[tid][&#34;result&#34;] = str(err)
+                    self._tasks[tid][&#34;result&#34;] = repr(err)
                 else:
                     self._tasks[tid][&#34;result&#34;] = b64_encode(result)
                     self._tasks[tid][&#34;status&#34;] = State.COMPLETE
@@ -178,7 +178,7 @@ with a multi-threaded web server and stores everything in-memory.</p></section>
                 result, err = handle_task(self._tasks[tid], self._payloads[tid])
                 if err:
                     self._tasks[tid][&#34;status&#34;] = State.ERROR
-                    self._tasks[tid][&#34;result&#34;] = str(err)
+                    self._tasks[tid][&#34;result&#34;] = repr(err)
                 else:
                     self._tasks[tid][&#34;result&#34;] = b64_encode(result)
                     self._tasks[tid][&#34;status&#34;] = State.COMPLETE
@@ -315,7 +315,7 @@ will need to move the task handler into its own process.</p></section>
             result, err = handle_task(self._tasks[tid], self._payloads[tid])
             if err:
                 self._tasks[tid][&#34;status&#34;] = State.ERROR
-                self._tasks[tid][&#34;result&#34;] = str(err)
+                self._tasks[tid][&#34;result&#34;] = repr(err)
             else:
                 self._tasks[tid][&#34;result&#34;] = b64_encode(result)
                 self._tasks[tid][&#34;status&#34;] = State.COMPLETE
