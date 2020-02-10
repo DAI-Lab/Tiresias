@@ -5,6 +5,7 @@ from tiresias.core.mechanisms import approximate_bounds
 class LinearRegression(dp.LinearRegression):
 
     def fit(self, X, y, sample_weight=None):
+        # TODO: concat X and y for norm, specify ranges
         if not self.data_norm:
             self.epsilon /= 2.0
             row_norms = np.linalg.norm(X, axis=1)

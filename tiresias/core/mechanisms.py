@@ -14,7 +14,7 @@ def laplace_noise(x, sensitivity, epsilon):
     """
     return np.random.laplace(loc=x, scale=sensitivity/epsilon)
 
-def approximate_bounds(x, epsilon=1.0, scale=0.1, base=2, bins=128, p=0.99999):
+def approximate_bounds(x, epsilon=1.0, scale=0.1, base=2, bins=128, p=0.9999):
     """
     This function estimates the upper and lower bounds of the data using a 
     modification of the histogram approach from [1].

@@ -3,7 +3,7 @@
 1. Launch a server.
 2. Submit a bunch of tasks.
 3. Launch the user client.
-4. Open the Google Form which will have more instructions.
+4. Ask the user to examine the tasks and answer questions on the Google Form.
 """
 import argparse
 import tempfile
