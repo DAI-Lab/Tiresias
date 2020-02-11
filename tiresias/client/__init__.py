@@ -32,8 +32,7 @@ def storage_server(storage_dir, storage_port, server_url, whitelist, blacklist, 
     initialize(storage_dir)
     if synthetic:
         create_synthetic_dataset(storage_dir)
-    else:
-        create_dummy_dataset(storage_dir)
+    create_dummy_dataset(storage_dir)
     api.config['storage_dir'] = storage_dir
 
     @api.route("/")

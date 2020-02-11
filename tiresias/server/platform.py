@@ -30,9 +30,9 @@ class Platform(object):
         with self._lock:
             for tid in set(self._tasks.keys()):
                 if self._tasks[tid]["status"] == State.COMPLETE:
-                    del self._payloads[tid]
                     if time() - self._tasks[tid]["start"] > timeout:
                         del self._tasks[tid]
+                        del self._payloads[tid]
     
     def run(self):
         """

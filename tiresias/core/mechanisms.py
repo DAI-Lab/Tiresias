@@ -41,9 +41,12 @@ def approximate_bounds(x, epsilon=1.0, scale=0.1, base=2, bins=128, p=0.9999):
     histogram[-1] += len(x)
     
     # Get the bins that are above the threshold
-    has_value = (histogram > threshold).nonzero()[0]
-    first, last = has_value[0] - 1, has_value[-1]
-    return cutoffs[first], cutoffs[last]
+    try:
+        has_value = (histogram > threshold).nonzero()[0]
+        first, last = has_value[0] - 1, has_value[-1]
+        return cutoffs[first], cutoffs[last]
+    except:
+        raise RuntimeError("Bounds approximation failed.")
 
 def mean(x, epsilon, delta, bounds=False):
     """
