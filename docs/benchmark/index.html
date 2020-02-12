@@ -24,157 +24,215 @@
 <summary>
 <span>Expand source code</span>
 </summary>
-<pre><code class="python">import numpy as np
-import tiresias.core.mechanisms as mechanisms
+<pre><code class="python">import time
+import pandas as pd
 
-def _ldp(x, epsilon, delta, continuous=True):
-    if continuous:
-        low, high = np.min(x), np.max(x)
-        return mechanisms.bounded_continuous(x, low=low, high=high, epsilon=epsilon)
-    else:
-        return mechanisms.finite_categorical(x, set(x), epsilon=epsilon)
+from sklearn.preprocessing import RobustScaler, StandardScaler
+from sklearn.model_selection import train_test_split
+from sklearn.linear_model import LogisticRegression
+from sklearn.ensemble import RandomForestClassifier
+from sklearn.svm import LinearSVC
+from sklearn.linear_model import SGDRegressor
+from sklearn.ensemble import RandomForestRegressor
+from sklearn.svm import LinearSVR
 
-def make_ldp(X, y, epsilon, delta, classification=True):
-    num_rows, num_cols = X.shape
-    assert X.shape[0] == y.shape[0]
+from tiresias.core import classification as classification
+from tiresias.core import regression as regression
+from tiresias.benchmark.helpers import make_ldp, FederatedLearningClassifier, FederatedLearningRegressor
 
-    p = 0.5 # use 70% of budget for X, 30% for Y
-    X, y = X.copy(), y.copy()
-    for col_idx in range(0, num_cols):
-        X[:,col_idx] = _ldp(X[:,col_idx], p * epsilon / X.shape[1], p * delta / X.shape[1])
-    y = _ldp(y, (1.0 - p) * epsilon, (1.0 - p) * delta, continuous=not classification)
-    return X, y
+def benchmark(X, y, epsilon, delta, problem_type):
+    &#34;&#34;&#34;
+    This function takes in a standard tabular dataset (X, y) and a problem 
+    problem_type (i.e. classification or regression) and evaluates a suite of
+    machine learning models and differential privacy mechanisms on it.
 
-import torch
-import numpy as np
-import tiresias.core.mechanisms as mechanisms
-from tqdm import tqdm
-from sklearn.base import ClassifierMixin, RegressorMixin
-from tiresias.core.gradients import get_gradients, put_gradients, merge_gradients
+    Note that this is *not* deterministic. You must set a random seed for
+    numpy and pytorch before calling this function.
+    &#34;&#34;&#34;
+    scalar = RobustScaler()
+    X_train, X_test, y_train, y_test = train_test_split(X, y)
+    X_train = scalar.fit_transform(X_train)
+    X_test = scalar.transform(X_test)
+    if problem_type == &#34;regression&#34;:
+        scalar = StandardScaler()
+        y_train = scalar.fit_transform(y_train.reshape(-1,1))[:,0]
+        y_test = scalar.transform(y_test.reshape(-1,1))[:,0]
+    return {
+        &#34;classification&#34;: benchmark_classification,
+        &#34;regression&#34;: benchmark_regression,
+    }[problem_type](X_train, X_test, y_train, y_test, epsilon, delta)
 
-class FederatedLearningWrapper(object):
+def benchmark_classification(X_train, X_test, y_train, y_test, epsilon, delta):
+    report = []
 
-    def __init__(self, model, loss, epsilon, delta, epochs, lr, batch_size):
-        self.model = model
-        self.epsilon = epsilon
-        self.delta = delta
-        self.epochs = epochs
-        self.loss = loss
-        self.lr = lr
-        self.batch_size = batch_size
+    # LogisticRegression - Local Differential Privacy
+    for C in [1.0, 10.0, 100.0]:
+        model = LogisticRegression(C=C, solver=&#39;lbfgs&#39;, multi_class=&#39;auto&#39;)
+        start = time.time()
+        X_train_ldp, y_train_ldp = make_ldp(X_train, y_train, epsilon, delta)
+        model.fit(X_train_ldp, y_train_ldp)
+        report.append({
+            &#34;type&#34;: &#34;bounded&#34;,
+            &#34;model&#34;: type(model).__name__,
+            &#34;hyperparameters&#34;: &#34;C=%s&#34; % C,
+            &#34;epsilon&#34;: epsilon,
+            &#34;accuracy&#34;: model.score(X_test, y_test),
+            &#34;time&#34;: time.time() - start
+        })
 
-    def fit(self, X, Y):
-        optimizer = torch.optim.Adam(self.model.parameters(), lr=self.lr)
-        epsilon = self.epsilon / self.epochs
-        delta = self.delta / self.epochs
-        for epoch in tqdm(range(self.epochs)):
-            gradients = []
-            for i in range(len(X)):
-                self.model.zero_grad()
-                x = torch.FloatTensor(X[i]).unsqueeze(0)
-                y = torch.tensor(Y[i]).unsqueeze(0)
-                loss = self.loss(self.model(x), y)
-                loss.backward()
-                gradients.append(get_gradients(self.model, epsilon, delta))
-                if len(gradients) &gt; self.batch_size:
-                    put_gradients(self.model, merge_gradients(gradients))
-                    optimizer.step()
-                    gradients = []
+        model = LinearSVC(C=C, max_iter=10000)
+        start = time.time()
+        X_train_ldp, y_train_ldp = make_ldp(X_train, y_train, epsilon, delta)
+        model.fit(X_train_ldp, y_train_ldp)
+        report.append({
+            &#34;type&#34;: &#34;bounded&#34;,
+            &#34;model&#34;: type(model).__name__,
+            &#34;hyperparameters&#34;: &#34;C=%s&#34; % C,
+            &#34;epsilon&#34;: epsilon,
+            &#34;accuracy&#34;: model.score(X_test, y_test),
+            &#34;time&#34;: time.time() - start
+        })
 
-    def predict(self, X):
-        Y = []
-        for i in range(len(X)):
-            x = torch.FloatTensor(X[i]).unsqueeze(0)
-            y = self.model(x)[0]
-            Y.append(y.detach().numpy())
-        return np.stack(Y)
+    # RandomForestClassifier - Local Differential Privacy
+    for n_estimators in [10, 50, 100]:
+        model = RandomForestClassifier(n_estimators=n_estimators)
+        start = time.time()
+        X_train_ldp, y_train_ldp = make_ldp(X_train, y_train, epsilon, delta)
+        model.fit(X_train_ldp, y_train_ldp)
+        report.append({
+            &#34;type&#34;: &#34;bounded&#34;,
+            &#34;model&#34;: type(model).__name__,
+            &#34;hyperparameters&#34;: &#34;n_estimators=%s&#34; % n_estimators,
+            &#34;epsilon&#34;: epsilon,
+            &#34;accuracy&#34;: model.score(X_test, y_test),
+            &#34;time&#34;: time.time() - start
+        })
 
-class FederatedLearningClassifier(ClassifierMixin):
+    # LogisticRegression - Integrated
+    for C in [1.0, 10.0, 100.0]:
+        model = classification.LogisticRegression(epsilon=epsilon, C=C)
+        start = time.time()
+        model.fit(X_train, y_train)
+        report.append({
+            &#34;type&#34;: &#34;integrated&#34;,
+            &#34;model&#34;: type(model).__name__,
+            &#34;hyperparameters&#34;: &#34;C=%s&#34; % C,
+            &#34;epsilon&#34;: epsilon,
+            &#34;accuracy&#34;: model.score(X_test, y_test),
+            &#34;time&#34;: time.time() - start
+        })
 
-    def __init__(self, epsilon, delta, epochs, lr):
-        self.epsilon = epsilon
-        self.delta = delta
-        self.epochs = epochs
-        self.lr = lr
+    # NaiveBayes - Integrated
+    model = classification.GaussianNB(epsilon=epsilon)
+    start = time.time()
+    model.fit(X_train, y_train)
+    report.append({
+        &#34;type&#34;: &#34;integrated&#34;,
+        &#34;model&#34;: type(model).__name__,
+        &#34;hyperparameters&#34;: &#34;&#34;,
+        &#34;epsilon&#34;: epsilon,
+        &#34;accuracy&#34;: model.score(X_test, y_test),
+        &#34;time&#34;: time.time() - start
+    })
 
-    def fit(self, X, y):
-        self._class_to_i = {k: i for i, k in enumerate(set(y))}
-        self._i_to_class = {v: k for k, v in self._class_to_i.items()}
+    # FederatedLearningClassifier - Gradient
+    for epochs in [8, 16, 32]:
+        model = FederatedLearningClassifier(epsilon, delta, epochs=epochs, lr=1e-2)
+        start = time.time()
+        model.fit(X_train, y_train)
+        report.append({
+            &#34;type&#34;: &#34;gradient&#34;,
+            &#34;model&#34;: type(model).__name__,
+            &#34;hyperparameters&#34;: &#34;epochs=%s&#34; % epochs,
+            &#34;epsilon&#34;: epsilon,
+            &#34;accuracy&#34;: model.score(X_test, y_test),
+            &#34;time&#34;: time.time() - start
+        })
 
-        self._model = FederatedLearningWrapper(
-            model=torch.nn.Sequential(
-                torch.nn.Linear(X.shape[1], 16),
-                torch.nn.ReLU(inplace=True),
-                torch.nn.Linear(16, len(self._class_to_i)),
-            ),
-            loss=torch.nn.functional.cross_entropy, 
-            epsilon=self.epsilon, 
-            delta=self.delta,
-            epochs=self.epochs, 
-            lr=self.lr,
-            batch_size=128,
-        )
-        self._model.fit(X, np.array([self._class_to_i[k] for k in y]))
+    return pd.DataFrame(report)
 
-    def predict(self, X):
-        y_pred = self._model.predict(X)
-        y_pred = np.argmax(y_pred, axis=1)
-        return [self._i_to_class[i] for i in y_pred]
+def benchmark_regression(X_train, X_test, y_train, y_test, epsilon, delta):
+    report = []
 
-class FederatedLearningRegressor(RegressorMixin):
+    # SGDRegressor - Local Differential Privacy
+    for alpha in [0.01, 0.1, 1.0, 10.0, 100.0]:
+        model = SGDRegressor(alpha=alpha, loss=&#39;huber&#39;, max_iter=1000, tol=1e-3)
+        start = time.time()
+        X_train_ldp, y_train_ldp = make_ldp(X_train, y_train, epsilon, delta, classification=False)
+        model.fit(X_train_ldp, y_train_ldp)
+        report.append({
+            &#34;type&#34;: &#34;bounded&#34;,
+            &#34;model&#34;: type(model).__name__,
+            &#34;hyperparameters&#34;: &#34;alpha=%s&#34; % alpha,
+            &#34;epsilon&#34;: epsilon,
+            &#34;accuracy&#34;: model.score(X_test, y_test),
+            &#34;time&#34;: time.time() - start
+        })
 
-    def __init__(self, epsilon, delta, epochs, lr):
-        self.epsilon = epsilon
-        self.delta = delta
-        self.epochs = epochs
-        self.lr = lr
+    # LinearSVR - Local Differential Privacy
+    for C in [1.0, 10.0, 100.0, 1000.0]:
+        model = LinearSVR(C=C, max_iter=10000)
+        start = time.time()
+        X_train_ldp, y_train_ldp = make_ldp(X_train, y_train, epsilon, delta, classification=False)
+        model.fit(X_train_ldp, y_train_ldp)
+        report.append({
+            &#34;type&#34;: &#34;bounded&#34;,
+            &#34;model&#34;: type(model).__name__,
+            &#34;hyperparameters&#34;: &#34;C=%s&#34; % C,
+            &#34;epsilon&#34;: epsilon,
+            &#34;accuracy&#34;: model.score(X_test, y_test),
+            &#34;time&#34;: time.time() - start
+        })
 
-    def fit(self, X, y):
-        self._model = FederatedLearningWrapper(
-            model=torch.nn.Sequential(
-                torch.nn.Linear(X.shape[1], 16),
-                torch.nn.ReLU(inplace=True),
-                torch.nn.Linear(16, 1),
-            ),
-            loss=torch.nn.functional.mse_loss, 
-            epsilon=self.epsilon, 
-            delta=self.delta,
-            epochs=self.epochs, 
-            lr=self.lr,
-            batch_size=128,
-        )
-        self._model.fit(X, y)
+    # RandomForestRegressor - Local Differential Privacy
+    for n_estimators in [10, 50, 100, 1000]:
+        model = RandomForestRegressor(n_estimators=n_estimators)
+        start = time.time()
+        X_train_ldp, y_train_ldp = make_ldp(X_train, y_train, epsilon, delta)
+        model.fit(X_train_ldp, y_train_ldp)
+        report.append({
+            &#34;type&#34;: &#34;bounded&#34;,
+            &#34;model&#34;: type(model).__name__,
+            &#34;hyperparameters&#34;: &#34;n_estimators=%s&#34; % n_estimators,
+            &#34;epsilon&#34;: epsilon,
+            &#34;accuracy&#34;: model.score(X_test, y_test),
+            &#34;time&#34;: time.time() - start
+        })
 
-    def predict(self, X):
-        y_pred = self._model.predict(X)
-        return y_pred
+    # LinearRegression - Integrated
+    model = regression.LinearRegression(epsilon=epsilon)
+    start = time.time()
+    model.fit(X_train, y_train)
+    report.append({
+        &#34;type&#34;: &#34;integrated&#34;,
+        &#34;model&#34;: type(model).__name__,
+        &#34;hyperparameters&#34;: &#34;&#34;,
+        &#34;epsilon&#34;: epsilon,
+        &#34;accuracy&#34;: model.score(X_test, y_test),
+        &#34;time&#34;: time.time() - start
+    })
 
-if __name__ == &#34;__main__&#34;:
-    from sklearn.datasets import load_boston
-    from tiresias.core import machine_learning as ml
+    # FederatedLearningRegressor - Gradient
+    for epochs in [8, 16, 32]:
+        model = FederatedLearningRegressor(epsilon, delta, epochs=epochs, lr=1e-2)
+        start = time.time()
+        model.fit(X_train, y_train)
+        report.append({
+            &#34;type&#34;: &#34;gradient&#34;,
+            &#34;model&#34;: type(model).__name__,
+            &#34;hyperparameters&#34;: &#34;epochs=%s&#34; % epochs,
+            &#34;epsilon&#34;: epsilon,
+            &#34;accuracy&#34;: model.score(X_test, y_test),
+            &#34;time&#34;: time.time() - start
+        })
 
-    X, y = load_boston(return_X_y=True)
-
-    for epsilon in [100.0]:
-
-        clf = ml.LinearRegression(epsilon=epsilon)
-        clf.fit(X, y)
-        print(&#34;ML (%s): %s&#34; % (epsilon, clf.score(X, y)))
-
-        clf = FederatedLearningRegressor(
-            epsilon=epsilon,
-            delta=1.0 / len(X),
-            epochs=32,
-            lr=0.01,
-        )
-        clf.fit(X, y)
-        print(&#34;FL (%s): %s&#34; % (epsilon, clf.score(X, y)))</code></pre>
+    return pd.DataFrame(report)</code></pre>
 </details>
 </section>
 <section>
 <h2 class="section-title" id="header-submodules">Sub-modules</h2>
 <dl>
-<dt><code class="name"><a title="tiresias.benchmark.classification" href="classification.html">tiresias.benchmark.classification</a></code></dt>
+<dt><code class="name"><a title="tiresias.benchmark.helpers" href="helpers.html">tiresias.benchmark.helpers</a></code></dt>
 <dd>
 <section class="desc"></section>
 </dd>
@@ -185,8 +243,44 @@ if __name__ == &#34;__main__&#34;:
 <section>
 <h2 class="section-title" id="header-functions">Functions</h2>
 <dl>
-<dt id="tiresias.benchmark.make_ldp"><code class="name flex">
-<span>def <span class="ident">make_ldp</span></span>(<span>X, y, epsilon, delta, classification=True)</span>
+<dt id="tiresias.benchmark.benchmark"><code class="name flex">
+<span>def <span class="ident">benchmark</span></span>(<span>X, y, epsilon, delta, problem_type)</span>
+</code></dt>
+<dd>
+<section class="desc"><p>This function takes in a standard tabular dataset (X, y) and a problem
+problem_type (i.e. classification or regression) and evaluates a suite of
+machine learning models and differential privacy mechanisms on it.</p>
+<p>Note that this is <em>not</em> deterministic. You must set a random seed for
+numpy and pytorch before calling this function.</p></section>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">def benchmark(X, y, epsilon, delta, problem_type):
+    &#34;&#34;&#34;
+    This function takes in a standard tabular dataset (X, y) and a problem 
+    problem_type (i.e. classification or regression) and evaluates a suite of
+    machine learning models and differential privacy mechanisms on it.
+
+    Note that this is *not* deterministic. You must set a random seed for
+    numpy and pytorch before calling this function.
+    &#34;&#34;&#34;
+    scalar = RobustScaler()
+    X_train, X_test, y_train, y_test = train_test_split(X, y)
+    X_train = scalar.fit_transform(X_train)
+    X_test = scalar.transform(X_test)
+    if problem_type == &#34;regression&#34;:
+        scalar = StandardScaler()
+        y_train = scalar.fit_transform(y_train.reshape(-1,1))[:,0]
+        y_test = scalar.transform(y_test.reshape(-1,1))[:,0]
+    return {
+        &#34;classification&#34;: benchmark_classification,
+        &#34;regression&#34;: benchmark_regression,
+    }[problem_type](X_train, X_test, y_train, y_test, epsilon, delta)</code></pre>
+</details>
+</dd>
+<dt id="tiresias.benchmark.benchmark_classification"><code class="name flex">
+<span>def <span class="ident">benchmark_classification</span></span>(<span>X_train, X_test, y_train, y_test, epsilon, delta)</span>
 </code></dt>
 <dd>
 <section class="desc"></section>
@@ -194,301 +288,186 @@ if __name__ == &#34;__main__&#34;:
 <summary>
 <span>Expand source code</span>
 </summary>
-<pre><code class="python">def make_ldp(X, y, epsilon, delta, classification=True):
-    num_rows, num_cols = X.shape
-    assert X.shape[0] == y.shape[0]
+<pre><code class="python">def benchmark_classification(X_train, X_test, y_train, y_test, epsilon, delta):
+    report = []
 
-    p = 0.5 # use 70% of budget for X, 30% for Y
-    X, y = X.copy(), y.copy()
-    for col_idx in range(0, num_cols):
-        X[:,col_idx] = _ldp(X[:,col_idx], p * epsilon / X.shape[1], p * delta / X.shape[1])
-    y = _ldp(y, (1.0 - p) * epsilon, (1.0 - p) * delta, continuous=not classification)
-    return X, y</code></pre>
+    # LogisticRegression - Local Differential Privacy
+    for C in [1.0, 10.0, 100.0]:
+        model = LogisticRegression(C=C, solver=&#39;lbfgs&#39;, multi_class=&#39;auto&#39;)
+        start = time.time()
+        X_train_ldp, y_train_ldp = make_ldp(X_train, y_train, epsilon, delta)
+        model.fit(X_train_ldp, y_train_ldp)
+        report.append({
+            &#34;type&#34;: &#34;bounded&#34;,
+            &#34;model&#34;: type(model).__name__,
+            &#34;hyperparameters&#34;: &#34;C=%s&#34; % C,
+            &#34;epsilon&#34;: epsilon,
+            &#34;accuracy&#34;: model.score(X_test, y_test),
+            &#34;time&#34;: time.time() - start
+        })
+
+        model = LinearSVC(C=C, max_iter=10000)
+        start = time.time()
+        X_train_ldp, y_train_ldp = make_ldp(X_train, y_train, epsilon, delta)
+        model.fit(X_train_ldp, y_train_ldp)
+        report.append({
+            &#34;type&#34;: &#34;bounded&#34;,
+            &#34;model&#34;: type(model).__name__,
+            &#34;hyperparameters&#34;: &#34;C=%s&#34; % C,
+            &#34;epsilon&#34;: epsilon,
+            &#34;accuracy&#34;: model.score(X_test, y_test),
+            &#34;time&#34;: time.time() - start
+        })
+
+    # RandomForestClassifier - Local Differential Privacy
+    for n_estimators in [10, 50, 100]:
+        model = RandomForestClassifier(n_estimators=n_estimators)
+        start = time.time()
+        X_train_ldp, y_train_ldp = make_ldp(X_train, y_train, epsilon, delta)
+        model.fit(X_train_ldp, y_train_ldp)
+        report.append({
+            &#34;type&#34;: &#34;bounded&#34;,
+            &#34;model&#34;: type(model).__name__,
+            &#34;hyperparameters&#34;: &#34;n_estimators=%s&#34; % n_estimators,
+            &#34;epsilon&#34;: epsilon,
+            &#34;accuracy&#34;: model.score(X_test, y_test),
+            &#34;time&#34;: time.time() - start
+        })
+
+    # LogisticRegression - Integrated
+    for C in [1.0, 10.0, 100.0]:
+        model = classification.LogisticRegression(epsilon=epsilon, C=C)
+        start = time.time()
+        model.fit(X_train, y_train)
+        report.append({
+            &#34;type&#34;: &#34;integrated&#34;,
+            &#34;model&#34;: type(model).__name__,
+            &#34;hyperparameters&#34;: &#34;C=%s&#34; % C,
+            &#34;epsilon&#34;: epsilon,
+            &#34;accuracy&#34;: model.score(X_test, y_test),
+            &#34;time&#34;: time.time() - start
+        })
+
+    # NaiveBayes - Integrated
+    model = classification.GaussianNB(epsilon=epsilon)
+    start = time.time()
+    model.fit(X_train, y_train)
+    report.append({
+        &#34;type&#34;: &#34;integrated&#34;,
+        &#34;model&#34;: type(model).__name__,
+        &#34;hyperparameters&#34;: &#34;&#34;,
+        &#34;epsilon&#34;: epsilon,
+        &#34;accuracy&#34;: model.score(X_test, y_test),
+        &#34;time&#34;: time.time() - start
+    })
+
+    # FederatedLearningClassifier - Gradient
+    for epochs in [8, 16, 32]:
+        model = FederatedLearningClassifier(epsilon, delta, epochs=epochs, lr=1e-2)
+        start = time.time()
+        model.fit(X_train, y_train)
+        report.append({
+            &#34;type&#34;: &#34;gradient&#34;,
+            &#34;model&#34;: type(model).__name__,
+            &#34;hyperparameters&#34;: &#34;epochs=%s&#34; % epochs,
+            &#34;epsilon&#34;: epsilon,
+            &#34;accuracy&#34;: model.score(X_test, y_test),
+            &#34;time&#34;: time.time() - start
+        })
+
+    return pd.DataFrame(report)</code></pre>
+</details>
+</dd>
+<dt id="tiresias.benchmark.benchmark_regression"><code class="name flex">
+<span>def <span class="ident">benchmark_regression</span></span>(<span>X_train, X_test, y_train, y_test, epsilon, delta)</span>
+</code></dt>
+<dd>
+<section class="desc"></section>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">def benchmark_regression(X_train, X_test, y_train, y_test, epsilon, delta):
+    report = []
+
+    # SGDRegressor - Local Differential Privacy
+    for alpha in [0.01, 0.1, 1.0, 10.0, 100.0]:
+        model = SGDRegressor(alpha=alpha, loss=&#39;huber&#39;, max_iter=1000, tol=1e-3)
+        start = time.time()
+        X_train_ldp, y_train_ldp = make_ldp(X_train, y_train, epsilon, delta, classification=False)
+        model.fit(X_train_ldp, y_train_ldp)
+        report.append({
+            &#34;type&#34;: &#34;bounded&#34;,
+            &#34;model&#34;: type(model).__name__,
+            &#34;hyperparameters&#34;: &#34;alpha=%s&#34; % alpha,
+            &#34;epsilon&#34;: epsilon,
+            &#34;accuracy&#34;: model.score(X_test, y_test),
+            &#34;time&#34;: time.time() - start
+        })
+
+    # LinearSVR - Local Differential Privacy
+    for C in [1.0, 10.0, 100.0, 1000.0]:
+        model = LinearSVR(C=C, max_iter=10000)
+        start = time.time()
+        X_train_ldp, y_train_ldp = make_ldp(X_train, y_train, epsilon, delta, classification=False)
+        model.fit(X_train_ldp, y_train_ldp)
+        report.append({
+            &#34;type&#34;: &#34;bounded&#34;,
+            &#34;model&#34;: type(model).__name__,
+            &#34;hyperparameters&#34;: &#34;C=%s&#34; % C,
+            &#34;epsilon&#34;: epsilon,
+            &#34;accuracy&#34;: model.score(X_test, y_test),
+            &#34;time&#34;: time.time() - start
+        })
+
+    # RandomForestRegressor - Local Differential Privacy
+    for n_estimators in [10, 50, 100, 1000]:
+        model = RandomForestRegressor(n_estimators=n_estimators)
+        start = time.time()
+        X_train_ldp, y_train_ldp = make_ldp(X_train, y_train, epsilon, delta)
+        model.fit(X_train_ldp, y_train_ldp)
+        report.append({
+            &#34;type&#34;: &#34;bounded&#34;,
+            &#34;model&#34;: type(model).__name__,
+            &#34;hyperparameters&#34;: &#34;n_estimators=%s&#34; % n_estimators,
+            &#34;epsilon&#34;: epsilon,
+            &#34;accuracy&#34;: model.score(X_test, y_test),
+            &#34;time&#34;: time.time() - start
+        })
+
+    # LinearRegression - Integrated
+    model = regression.LinearRegression(epsilon=epsilon)
+    start = time.time()
+    model.fit(X_train, y_train)
+    report.append({
+        &#34;type&#34;: &#34;integrated&#34;,
+        &#34;model&#34;: type(model).__name__,
+        &#34;hyperparameters&#34;: &#34;&#34;,
+        &#34;epsilon&#34;: epsilon,
+        &#34;accuracy&#34;: model.score(X_test, y_test),
+        &#34;time&#34;: time.time() - start
+    })
+
+    # FederatedLearningRegressor - Gradient
+    for epochs in [8, 16, 32]:
+        model = FederatedLearningRegressor(epsilon, delta, epochs=epochs, lr=1e-2)
+        start = time.time()
+        model.fit(X_train, y_train)
+        report.append({
+            &#34;type&#34;: &#34;gradient&#34;,
+            &#34;model&#34;: type(model).__name__,
+            &#34;hyperparameters&#34;: &#34;epochs=%s&#34; % epochs,
+            &#34;epsilon&#34;: epsilon,
+            &#34;accuracy&#34;: model.score(X_test, y_test),
+            &#34;time&#34;: time.time() - start
+        })
+
+    return pd.DataFrame(report)</code></pre>
 </details>
 </dd>
 </dl>
 </section>
 <section>
-<h2 class="section-title" id="header-classes">Classes</h2>
-<dl>
-<dt id="tiresias.benchmark.FederatedLearningClassifier"><code class="flex name class">
-<span>class <span class="ident">FederatedLearningClassifier</span></span>
-<span>(</span><span>epsilon, delta, epochs, lr)</span>
-</code></dt>
-<dd>
-<section class="desc"><p>Mixin class for all classifiers in scikit-learn.</p></section>
-<details class="source">
-<summary>
-<span>Expand source code</span>
-</summary>
-<pre><code class="python">class FederatedLearningClassifier(ClassifierMixin):
-
-    def __init__(self, epsilon, delta, epochs, lr):
-        self.epsilon = epsilon
-        self.delta = delta
-        self.epochs = epochs
-        self.lr = lr
-
-    def fit(self, X, y):
-        self._class_to_i = {k: i for i, k in enumerate(set(y))}
-        self._i_to_class = {v: k for k, v in self._class_to_i.items()}
-
-        self._model = FederatedLearningWrapper(
-            model=torch.nn.Sequential(
-                torch.nn.Linear(X.shape[1], 16),
-                torch.nn.ReLU(inplace=True),
-                torch.nn.Linear(16, len(self._class_to_i)),
-            ),
-            loss=torch.nn.functional.cross_entropy, 
-            epsilon=self.epsilon, 
-            delta=self.delta,
-            epochs=self.epochs, 
-            lr=self.lr,
-            batch_size=128,
-        )
-        self._model.fit(X, np.array([self._class_to_i[k] for k in y]))
-
-    def predict(self, X):
-        y_pred = self._model.predict(X)
-        y_pred = np.argmax(y_pred, axis=1)
-        return [self._i_to_class[i] for i in y_pred]</code></pre>
-</details>
-<h3>Ancestors</h3>
-<ul class="hlist">
-<li>sklearn.base.ClassifierMixin</li>
-</ul>
-<h3>Methods</h3>
-<dl>
-<dt id="tiresias.benchmark.FederatedLearningClassifier.fit"><code class="name flex">
-<span>def <span class="ident">fit</span></span>(<span>self, X, y)</span>
-</code></dt>
-<dd>
-<section class="desc"></section>
-<details class="source">
-<summary>
-<span>Expand source code</span>
-</summary>
-<pre><code class="python">def fit(self, X, y):
-    self._class_to_i = {k: i for i, k in enumerate(set(y))}
-    self._i_to_class = {v: k for k, v in self._class_to_i.items()}
-
-    self._model = FederatedLearningWrapper(
-        model=torch.nn.Sequential(
-            torch.nn.Linear(X.shape[1], 16),
-            torch.nn.ReLU(inplace=True),
-            torch.nn.Linear(16, len(self._class_to_i)),
-        ),
-        loss=torch.nn.functional.cross_entropy, 
-        epsilon=self.epsilon, 
-        delta=self.delta,
-        epochs=self.epochs, 
-        lr=self.lr,
-        batch_size=128,
-    )
-    self._model.fit(X, np.array([self._class_to_i[k] for k in y]))</code></pre>
-</details>
-</dd>
-<dt id="tiresias.benchmark.FederatedLearningClassifier.predict"><code class="name flex">
-<span>def <span class="ident">predict</span></span>(<span>self, X)</span>
-</code></dt>
-<dd>
-<section class="desc"></section>
-<details class="source">
-<summary>
-<span>Expand source code</span>
-</summary>
-<pre><code class="python">def predict(self, X):
-    y_pred = self._model.predict(X)
-    y_pred = np.argmax(y_pred, axis=1)
-    return [self._i_to_class[i] for i in y_pred]</code></pre>
-</details>
-</dd>
-</dl>
-</dd>
-<dt id="tiresias.benchmark.FederatedLearningRegressor"><code class="flex name class">
-<span>class <span class="ident">FederatedLearningRegressor</span></span>
-<span>(</span><span>epsilon, delta, epochs, lr)</span>
-</code></dt>
-<dd>
-<section class="desc"><p>Mixin class for all regression estimators in scikit-learn.</p></section>
-<details class="source">
-<summary>
-<span>Expand source code</span>
-</summary>
-<pre><code class="python">class FederatedLearningRegressor(RegressorMixin):
-
-    def __init__(self, epsilon, delta, epochs, lr):
-        self.epsilon = epsilon
-        self.delta = delta
-        self.epochs = epochs
-        self.lr = lr
-
-    def fit(self, X, y):
-        self._model = FederatedLearningWrapper(
-            model=torch.nn.Sequential(
-                torch.nn.Linear(X.shape[1], 16),
-                torch.nn.ReLU(inplace=True),
-                torch.nn.Linear(16, 1),
-            ),
-            loss=torch.nn.functional.mse_loss, 
-            epsilon=self.epsilon, 
-            delta=self.delta,
-            epochs=self.epochs, 
-            lr=self.lr,
-            batch_size=128,
-        )
-        self._model.fit(X, y)
-
-    def predict(self, X):
-        y_pred = self._model.predict(X)
-        return y_pred</code></pre>
-</details>
-<h3>Ancestors</h3>
-<ul class="hlist">
-<li>sklearn.base.RegressorMixin</li>
-</ul>
-<h3>Methods</h3>
-<dl>
-<dt id="tiresias.benchmark.FederatedLearningRegressor.fit"><code class="name flex">
-<span>def <span class="ident">fit</span></span>(<span>self, X, y)</span>
-</code></dt>
-<dd>
-<section class="desc"></section>
-<details class="source">
-<summary>
-<span>Expand source code</span>
-</summary>
-<pre><code class="python">def fit(self, X, y):
-    self._model = FederatedLearningWrapper(
-        model=torch.nn.Sequential(
-            torch.nn.Linear(X.shape[1], 16),
-            torch.nn.ReLU(inplace=True),
-            torch.nn.Linear(16, 1),
-        ),
-        loss=torch.nn.functional.mse_loss, 
-        epsilon=self.epsilon, 
-        delta=self.delta,
-        epochs=self.epochs, 
-        lr=self.lr,
-        batch_size=128,
-    )
-    self._model.fit(X, y)</code></pre>
-</details>
-</dd>
-<dt id="tiresias.benchmark.FederatedLearningRegressor.predict"><code class="name flex">
-<span>def <span class="ident">predict</span></span>(<span>self, X)</span>
-</code></dt>
-<dd>
-<section class="desc"></section>
-<details class="source">
-<summary>
-<span>Expand source code</span>
-</summary>
-<pre><code class="python">def predict(self, X):
-    y_pred = self._model.predict(X)
-    return y_pred</code></pre>
-</details>
-</dd>
-</dl>
-</dd>
-<dt id="tiresias.benchmark.FederatedLearningWrapper"><code class="flex name class">
-<span>class <span class="ident">FederatedLearningWrapper</span></span>
-<span>(</span><span>model, loss, epsilon, delta, epochs, lr, batch_size)</span>
-</code></dt>
-<dd>
-<section class="desc"></section>
-<details class="source">
-<summary>
-<span>Expand source code</span>
-</summary>
-<pre><code class="python">class FederatedLearningWrapper(object):
-
-    def __init__(self, model, loss, epsilon, delta, epochs, lr, batch_size):
-        self.model = model
-        self.epsilon = epsilon
-        self.delta = delta
-        self.epochs = epochs
-        self.loss = loss
-        self.lr = lr
-        self.batch_size = batch_size
-
-    def fit(self, X, Y):
-        optimizer = torch.optim.Adam(self.model.parameters(), lr=self.lr)
-        epsilon = self.epsilon / self.epochs
-        delta = self.delta / self.epochs
-        for epoch in tqdm(range(self.epochs)):
-            gradients = []
-            for i in range(len(X)):
-                self.model.zero_grad()
-                x = torch.FloatTensor(X[i]).unsqueeze(0)
-                y = torch.tensor(Y[i]).unsqueeze(0)
-                loss = self.loss(self.model(x), y)
-                loss.backward()
-                gradients.append(get_gradients(self.model, epsilon, delta))
-                if len(gradients) &gt; self.batch_size:
-                    put_gradients(self.model, merge_gradients(gradients))
-                    optimizer.step()
-                    gradients = []
-
-    def predict(self, X):
-        Y = []
-        for i in range(len(X)):
-            x = torch.FloatTensor(X[i]).unsqueeze(0)
-            y = self.model(x)[0]
-            Y.append(y.detach().numpy())
-        return np.stack(Y)</code></pre>
-</details>
-<h3>Methods</h3>
-<dl>
-<dt id="tiresias.benchmark.FederatedLearningWrapper.fit"><code class="name flex">
-<span>def <span class="ident">fit</span></span>(<span>self, X, Y)</span>
-</code></dt>
-<dd>
-<section class="desc"></section>
-<details class="source">
-<summary>
-<span>Expand source code</span>
-</summary>
-<pre><code class="python">def fit(self, X, Y):
-    optimizer = torch.optim.Adam(self.model.parameters(), lr=self.lr)
-    epsilon = self.epsilon / self.epochs
-    delta = self.delta / self.epochs
-    for epoch in tqdm(range(self.epochs)):
-        gradients = []
-        for i in range(len(X)):
-            self.model.zero_grad()
-            x = torch.FloatTensor(X[i]).unsqueeze(0)
-            y = torch.tensor(Y[i]).unsqueeze(0)
-            loss = self.loss(self.model(x), y)
-            loss.backward()
-            gradients.append(get_gradients(self.model, epsilon, delta))
-            if len(gradients) &gt; self.batch_size:
-                put_gradients(self.model, merge_gradients(gradients))
-                optimizer.step()
-                gradients = []</code></pre>
-</details>
-</dd>
-<dt id="tiresias.benchmark.FederatedLearningWrapper.predict"><code class="name flex">
-<span>def <span class="ident">predict</span></span>(<span>self, X)</span>
-</code></dt>
-<dd>
-<section class="desc"></section>
-<details class="source">
-<summary>
-<span>Expand source code</span>
-</summary>
-<pre><code class="python">def predict(self, X):
-    Y = []
-    for i in range(len(X)):
-        x = torch.FloatTensor(X[i]).unsqueeze(0)
-        y = self.model(x)[0]
-        Y.append(y.detach().numpy())
-    return np.stack(Y)</code></pre>
-</details>
-</dd>
-</dl>
-</dd>
-</dl>
 </section>
 </article>
 <nav id="sidebar">
@@ -504,37 +483,14 @@ if __name__ == &#34;__main__&#34;:
 </li>
 <li><h3><a href="#header-submodules">Sub-modules</a></h3>
 <ul>
-<li><code><a title="tiresias.benchmark.classification" href="classification.html">tiresias.benchmark.classification</a></code></li>
+<li><code><a title="tiresias.benchmark.helpers" href="helpers.html">tiresias.benchmark.helpers</a></code></li>
 </ul>
 </li>
 <li><h3><a href="#header-functions">Functions</a></h3>
 <ul class="">
-<li><code><a title="tiresias.benchmark.make_ldp" href="#tiresias.benchmark.make_ldp">make_ldp</a></code></li>
-</ul>
-</li>
-<li><h3><a href="#header-classes">Classes</a></h3>
-<ul>
-<li>
-<h4><code><a title="tiresias.benchmark.FederatedLearningClassifier" href="#tiresias.benchmark.FederatedLearningClassifier">FederatedLearningClassifier</a></code></h4>
-<ul class="">
-<li><code><a title="tiresias.benchmark.FederatedLearningClassifier.fit" href="#tiresias.benchmark.FederatedLearningClassifier.fit">fit</a></code></li>
-<li><code><a title="tiresias.benchmark.FederatedLearningClassifier.predict" href="#tiresias.benchmark.FederatedLearningClassifier.predict">predict</a></code></li>
-</ul>
-</li>
-<li>
-<h4><code><a title="tiresias.benchmark.FederatedLearningRegressor" href="#tiresias.benchmark.FederatedLearningRegressor">FederatedLearningRegressor</a></code></h4>
-<ul class="">
-<li><code><a title="tiresias.benchmark.FederatedLearningRegressor.fit" href="#tiresias.benchmark.FederatedLearningRegressor.fit">fit</a></code></li>
-<li><code><a title="tiresias.benchmark.FederatedLearningRegressor.predict" href="#tiresias.benchmark.FederatedLearningRegressor.predict">predict</a></code></li>
-</ul>
-</li>
-<li>
-<h4><code><a title="tiresias.benchmark.FederatedLearningWrapper" href="#tiresias.benchmark.FederatedLearningWrapper">FederatedLearningWrapper</a></code></h4>
-<ul class="">
-<li><code><a title="tiresias.benchmark.FederatedLearningWrapper.fit" href="#tiresias.benchmark.FederatedLearningWrapper.fit">fit</a></code></li>
-<li><code><a title="tiresias.benchmark.FederatedLearningWrapper.predict" href="#tiresias.benchmark.FederatedLearningWrapper.predict">predict</a></code></li>
-</ul>
-</li>
+<li><code><a title="tiresias.benchmark.benchmark" href="#tiresias.benchmark.benchmark">benchmark</a></code></li>
+<li><code><a title="tiresias.benchmark.benchmark_classification" href="#tiresias.benchmark.benchmark_classification">benchmark_classification</a></code></li>
+<li><code><a title="tiresias.benchmark.benchmark_regression" href="#tiresias.benchmark.benchmark_regression">benchmark_regression</a></code></li>
 </ul>
 </li>
 </ul>

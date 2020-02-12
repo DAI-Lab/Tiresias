@@ -5,7 +5,10 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, minimum-scale=1" />
 <meta name="generator" content="pdoc 0.7.1" />
 <title>tiresias API documentation</title>
-<meta name="description" content="An open source system for privacy preserving machine learning …" />
+<meta name="description" content="![](images/banner.png)
+&lt;p align=&#34;center&#34;&gt;
+&lt;a href=&#34;https://dai-lab.github.io/Tiresias/&#34; alt=&#34;Documentation&#34;&gt;
+&lt;img …" />
 <link href='https://cdnjs.cloudflare.com/ajax/libs/normalize/8.0.0/normalize.min.css' rel='stylesheet'>
 <link href='https://cdnjs.cloudflare.com/ajax/libs/10up-sanitize.css/8.0.0/sanitize.min.css' rel='stylesheet'>
 <link href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/9.12.0/styles/github.min.css" rel="stylesheet">
@@ -16,29 +19,58 @@
 <body>
 <main>
 <article id="content">
-<header>
-<h1 class="title">Module <code>tiresias</code></h1>
-</header>
+
 <section id="section-intro">
-<p>An open source system for privacy preserving machine learning.</p>
-<h2 id="usage">Usage</h2>
-<p>To get started with <code>Tiresias</code>, run the following commands to install the library.</p>
-<pre><code>pip install -e .
-pytest
+<p><img alt="" src="images/banner.png">
+<p align="center">
+<a href="https://dai-lab.github.io/Tiresias/" alt="Documentation">
+<img src="https://img.shields.io/badge/documentation-informational" /></a>
+<a href="https://github.com/DAI-Lab/Tiresias/graphs/contributors" alt="Contributors">
+<img src="https://img.shields.io/github/contributors/DAI-Lab/Tiresias" /></a>
+<a href="https://github.com/DAI-Lab/Tiresias/pulse" alt="Activity">
+<img src="https://img.shields.io/github/commit-activity/m/DAI-Lab/Tiresias" /></a>
+</p></p>
+<p>Tiresias is an open source platform for enabling privacy preserving, peer-to-peer, machine learning.</p>
+<ul>
+<li><a href="#installation">Installation</a></li>
+<li><a href="#quick-start">Quick Start</a><ul>
+<li><a href="#running-the-server">Running the Server</a></li>
+<li><a href="#running-the-client">Running the Client</a></li>
+<li><a href="#submitting-a-task">Submitting a Task</a></li>
+</ul>
+</li>
+<li><a href="#advanced-usage">Advanced Usage</a><ul>
+<li><a href="#exploring-task-types">Exploring Task Types</a></li>
+<li><a href="#writing-data-collectors">Writing Data Collectors</a></li>
+</ul>
+</li>
+</ul>
+<p><em><strong>Disclaimer:</strong> Do not use this platform to handle actual user data. This is currently an experimental system for privacy and machine learning research and should not be used in production settings.</em></p>
+<h2 id="installation">Installation</h2>
+<p>To install this library, make sure you are running a supported version of Python and run the following command:</p>
+<pre><code>git clone &lt;https://github.com/DAI-Lab/Tiresias&gt;
+cd Tiresias
+pip install -e .
 </code></pre>
-<h3 id="platform-maintainer">Platform Maintainer</h3>
-<p>To launch the <em>platform server</em>, run the below command and note your server's IP address.</p>
+<p>To make sure your installation succeeded, you can execute the unit tests by running <code>pytest</code>. If all the tests pass, congratulations, you are now ready to start using the Tiresias platform.</p>
+<h2 id="quick-start">Quick Start</h2>
+<p>The Tiresias platform consists of a server which is responsible for keeping track of tasks and one or more clients that run on the data contributor's device. When a requestor wants to create a task, they submit it to the server who relays it to the clients; the clients can then choose whether to contribute their data to each task on a case-by-case basis.</p>
+<p align="center">
+<img src="images/overview.png" style="max-width:90%"/>
+</p>
+<h3 id="running-the-server">Running the Server</h3>
+<p>To launch the <a title="tiresias.server" href="server/index.html"><code>tiresias.server</code></a>, run the following command and specify an open port:</p>
 <blockquote>
 <p>tiresias-server &ndash;port 3000</p>
 </blockquote>
-<p>If you navigate to <code>&lt;http://&lt;SERVER_IP&gt;&gt;:3000/</code> in your web browser, you'll see a list of open
+<p>If you navigate to <code>&lt;http://127.0.0.1:3000/</code>&gt; in your web browser, you'll see a list of open
 tasks. This list will initially be empty - we will demonstrate how you can submit tasks to
 the platform in a later section.</p>
-<h3 id="data-contributor">Data Contributor</h3>
+<h3 id="running-the-client">Running the Client</h3>
 <p>Now that your platform server is up and running, you can ask your <em>data contributors</em> to
 launch the <em>user client</em> and point it at your server with the below command.</p>
 <blockquote>
-<p>tiresias &ndash;server <a href="http://localhost:3000/">http://localhost:3000/</a></p>
+<p>tiresias &ndash;server <a href="http://127.0.0.1:3000/">http://127.0.0.1:3000/</a></p>
 </blockquote>
 <p>The <em>user client</em> comes with a few built-in dummy datasets that you can play with; however,
 it's up to the <em>data contributors</em> to choose what additional data collection applications
@@ -46,80 +78,87 @@ they want to install (i.e. an app that tracks screen time).</p>
 <p>The <em>user client</em> automatically opens the user interface in your default web browser. The
 user interface will show you any open tasks that you can choose to contribute to, as well
 as a list of the columns that are being collected in your personal data store.</p>
-<h3 id="data-requestor">Data Requestor</h3>
+<p>Note that although the user interface is displayed in your web browser, it will not communicate
+with the outside world unless you explicitely consent to accepting a task.</p>
+<h3 id="submitting-a-task">Submitting a Task</h3>
 <p>Now that you have both the <em>platform server</em> and one or more <em>user clients</em> up and running,
-we can start writing tasks using the Tiresias Python API. Here's an example of a basic task
-which estimates the median values of the <code>malic_acid</code> field in the included <code>wine</code> dataset.</p>
+we can start writing tasks using the Python API. Here's an example of a basic task which
+estimates the median age of the user:</p>
 <pre><code>from tiresias.server import remote
-query_id = remote.create_task(&quot;http://localhost:3000/&quot;, {
-    &quot;type&quot;: &quot;basic&quot;,
-    &quot;epsilon&quot;: 16.0,
-    &quot;delta&quot;: 1e-5,
-    &quot;min_count&quot;: 10,
-    &quot;featurizer&quot;: &quot;SELECT malic_acid FROM dummy.wine&quot;,
-    &quot;aggregator&quot;: &quot;median&quot;
+task_id = remote.create_task('http://127.0.0.1:3000/', {
+    "name": "Median Age",
+    "type": "basic",
+    "epsilon": 2.0,
+    "delta": 1e-5,
+    "min_count": 10,
+    "featurizer": "SELECT age FROM profile.demographics",
+    "aggregator": "median"
 })
-print(remote.fetch_task(&quot;http://localhost:3000/&quot;, query_id))
 </code></pre>
-<p>Note that this task requires a minimum of 10 users to complete; however, even if you don't
-have that many users, you can still track the progress of the task using either the Python
-API or the web application.</p>
-<h2 id="tasks">Tasks</h2>
-<h3 id="basic-tasks">Basic Tasks</h3>
-<p>This task would like to access your data by running <SQL>. Your data will be sent to the
-Tiresias server, where it will be combined with at least <COUNT> other users data and
-aggregated into a single <AGGREGATOR> value which will have noise added to make it
-(<EPSILON>, <DELTA>) differentially private to reduce the risk that anyone can figure out
+<p>The <code>task_id</code> is an unique identifier which you can use to check on the status of the query:</p>
+<pre><code>print(remote.fetch_task("http://127.0.0.1:3000/", task_id))
+</code></pre>
+<p>Note that this particular task requires a minimum of 10 users to complete.</p>
+<h2 id="advanced-usage">Advanced Usage</h2>
+<h3 id="exploring-task-types">Exploring Task Types</h3>
+<p align="center">
+<img src="images/task_types.png" style="max-width:90%"/>
+</p>
+<h4 id="basic-task">Basic Task</h4>
+<p>This task would like to access your data by running [SQL]. Your data will be sent to the
+Tiresias server, where it will be combined with at least [COUNT] other users data and
+aggregated into a single [AGGREGATOR] value which will have noise added to make it
+([EPSILON], [DELTA]) differentially private to reduce the risk that anyone can figure out
 your contribution to this task. Only this differentially private value will be released to
 the data requester.</p>
 <pre><code>{
     &quot;type&quot;: &quot;basic&quot;,
-    &quot;epsilon&quot;: &lt;FLOAT&gt;,
-    &quot;delta&quot;: &lt;FLOAT&gt;,
-    &quot;min_count&quot;: &lt;INT&gt;,
-    &quot;featurizer&quot;: &lt;SQL&gt;,
-    &quot;aggregator&quot;: &lt;AGGREGATOR&gt;
+    &quot;epsilon&quot;: [FLOAT],
+    &quot;delta&quot;: [FLOAT],
+    &quot;min_count&quot;: [INT],
+    &quot;featurizer&quot;: [SQL],
+    &quot;aggregator&quot;: [AGGREGATOR]
 }
 </code></pre>
-<h3 id="integrated-task">Integrated Task</h3>
-<p>This task would like to access your data by running <SQL>. Your data will be sent to the
-Tiresias server, where it will be combined with at least <COUNT> other users data and
-used to train a <MODEL> model to predict <OUTPUT>. This model will have noise added to it
-to make it (<EPSILON>, <DELTA>) differentially private to reduce the risk that anyone can
+<h4 id="integrated-task">Integrated Task</h4>
+<p>This task would like to access your data by running [SQL]. Your data will be sent to the
+Tiresias server, where it will be combined with at least [COUNT] other users data and
+used to train a [MODEL] model to predict [OUTPUT]. This model will have noise added to it
+to make it ([EPSILON], [DELTA]) differentially private to reduce the risk that anyone can
 figure out your contribution to this task. Only this differentially private model will be
 released to the data requester.</p>
 <pre><code>{
     &quot;type&quot;: &quot;integrated&quot;,
-    &quot;epsilon&quot;: &lt;FLOAT&gt;,
-    &quot;delta&quot;: &lt;FLOAT&gt;,
-    &quot;featurizer&quot;: &lt;SQL&gt;,
-    &quot;model&quot;: &lt;MODEL&gt;,
-    &quot;inputs&quot;: [&lt;VARNAME&gt;, &lt;VARNAME&gt;, ...],
-    &quot;output&quot;: &lt;VARNAME&gt;
+    &quot;epsilon&quot;: [FLOAT],
+    &quot;delta&quot;: [FLOAT],
+    &quot;featurizer&quot;: [SQL],
+    &quot;model&quot;: [MODEL],
+    &quot;inputs&quot;: [[VARNAME], [VARNAME], ...],
+    &quot;output&quot;: [VARNAME]
 }
 </code></pre>
-<h3 id="bounded-task">Bounded Task</h3>
-<p>This task would like to access your data by running <SQL>. Before sending your data to
-the server, we will add noise to make it (<EPSILON>, <DELTA>) differentially private to
+<h4 id="bounded-task">Bounded Task</h4>
+<p>This task would like to access your data by running [SQL]. Before sending your data to
+the server, we will add noise to make it ([EPSILON], [DELTA]) differentially private to
 reduce the risk that anyone can figure out your contribution to this task.</p>
 <pre><code>{
     &quot;type&quot;: &quot;bounded&quot;,
-    &quot;epsilon&quot;: &lt;FLOAT&gt;,
-    &quot;delta&quot;: &lt;FLOAT&gt;,
-    &quot;featurizer&quot;: &lt;SQL&gt;,
+    &quot;epsilon&quot;: [FLOAT],
+    &quot;delta&quot;: [FLOAT],
+    &quot;featurizer&quot;: [SQL],
     &quot;bounds&quot;: {
-        &quot;&lt;VARNAME&gt;&quot;: {
-            &quot;type&quot;: &quot;&lt;BOUND_TYPE&gt;&quot;,
-            &quot;default&quot;: &lt;FINITE_VALUE&gt;,
-            &quot;values&quot;: [&lt;FINITE_VALUE&gt;, &lt;FINITE_VALUE&gt;],
+        &quot;[VARNAME]&quot;: {
+            &quot;type&quot;: &quot;[BOUND_TYPE]&quot;,
+            &quot;default&quot;: [FINITE_VALUE],
+            &quot;values&quot;: [[FINITE_VALUE], [FINITE_VALUE]],
         }
     }
 }
 </code></pre>
-<h3 id="gradient-task">Gradient Task</h3>
-<p>This task would like to access your data by running <SQL> and the computing the gradients
+<h4 id="gradient-task">Gradient Task</h4>
+<p>This task would like to access your data by running [SQL] and the computing the gradients
 for a model. Note that your actual data will not be sent to the server, only the gradients,
-and even then, we add noise to the gradients before sending it to make it (<EPSILON>, <DELTA>)
+and even then, we add noise to the gradients before sending it to make it ([EPSILON], [DELTA])
 differentially private to reduce the risk that anyone can figure out your contribution to
 this task.</p>
 <pre><code>{
@@ -127,27 +166,20 @@ this task.</p>
     &quot;epsilon&quot;: 10.0,
     &quot;delta&quot;: 1e-5,
     &quot;lr&quot;: 0.01,
-    &quot;featurizer&quot;: &quot;SELECT profile_picture, y FROM profile.example&quot;,
-    &quot;model&quot;: ...,
-    &quot;loss&quot;: b64_encode(torch.nn.functional.mse_loss),
-    &quot;inputs&quot;: &quot;profile_picture&quot;,
-    &quot;input_type&quot;: &quot;image&quot;,
-    &quot;output&quot;: [&quot;y&quot;],
-}
-</code></pre>
-<pre><code>{
-    &quot;type&quot;: &quot;gradient&quot;,
-    &quot;epsilon&quot;: 10.0,
-    &quot;delta&quot;: 1e-5,
-    &quot;lr&quot;: 0.01,
+    &quot;min_sample_size&quot;: 100,
     &quot;featurizer&quot;: &quot;SELECT x1, x2, y FROM profile.example&quot;,
-    &quot;model&quot;: ...,
-    &quot;loss&quot;: b64_encode(torch.nn.functional.cross_entropy_loss),
-    &quot;inputs&quot;: [&quot;x1&quot;, &quot;x2&quot;],
-    &quot;input_type&quot;: &quot;vector&quot;,
+    &quot;model&quot;: torch.nn.Sequential(
+        torch.nn.Linear(2, 10),
+        torch.nn.ReLU(),
+        torch.nn.Linear(10, 1),
+    ),
+    &quot;loss&quot;: torch.nn.functional.mse_loss,
+    &quot;inputs&quot;: [&quot;x0&quot;, &quot;x1&quot;],
     &quot;output&quot;: [&quot;y&quot;],
 }
 </code></pre>
+<h3 id="writing-data-collectors">Writing Data Collectors</h3>
+<p>Coming soon&hellip;</p>
 <details class="source">
 <summary>
 <span>Expand source code</span>
@@ -189,17 +221,22 @@ this task.</p>
 <h1>Index</h1>
 <div class="toc">
 <ul>
-<li><a href="#usage">Usage</a><ul>
-<li><a href="#platform-maintainer">Platform Maintainer</a></li>
-<li><a href="#data-contributor">Data Contributor</a></li>
-<li><a href="#data-requestor">Data Requestor</a></li>
+<li><a href="#installation">Installation</a></li>
+<li><a href="#quick-start">Quick Start</a><ul>
+<li><a href="#running-the-server">Running the Server</a></li>
+<li><a href="#running-the-client">Running the Client</a></li>
+<li><a href="#submitting-a-task">Submitting a Task</a></li>
 </ul>
 </li>
-<li><a href="#tasks">Tasks</a><ul>
-<li><a href="#basic-tasks">Basic Tasks</a></li>
+<li><a href="#advanced-usage">Advanced Usage</a><ul>
+<li><a href="#exploring-task-types">Exploring Task Types</a><ul>
+<li><a href="#basic-task">Basic Task</a></li>
 <li><a href="#integrated-task">Integrated Task</a></li>
 <li><a href="#bounded-task">Bounded Task</a></li>
 <li><a href="#gradient-task">Gradient Task</a></li>
+</ul>
+</li>
+<li><a href="#writing-data-collectors">Writing Data Collectors</a></li>
 </ul>
 </li>
 </ul>

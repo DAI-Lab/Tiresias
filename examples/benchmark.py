@@ -69,9 +69,9 @@ if __name__ == "__main__":
             reports.append(report)
 
     df = pd.concat(reports).reindex()
-    df.to_csv("benchmark.csv", index=False)
     df = df.groupby(["model", "type", "epsilon", "dataset", "problem_type"]).agg({
         "accuracy": lambda x: x.mean(),
         "time": lambda x: x.mean(),
-    })
+    }).reset_index()
+    df.to_csv("benchmark.csv", index=False)
     print(df)

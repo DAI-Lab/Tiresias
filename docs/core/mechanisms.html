@@ -40,7 +40,7 @@ def laplace_noise(x, sensitivity, epsilon):
     &#34;&#34;&#34;
     return np.random.laplace(loc=x, scale=sensitivity/epsilon)
 
-def approximate_bounds(x, epsilon=1.0, scale=0.1, base=2, bins=128, p=0.99999):
+def approximate_bounds(x, epsilon=1.0, scale=0.1, base=2, bins=128, p=0.9999):
     &#34;&#34;&#34;
     This function estimates the upper and lower bounds of the data using a 
     modification of the histogram approach from [1].
@@ -67,9 +67,12 @@ def approximate_bounds(x, epsilon=1.0, scale=0.1, base=2, bins=128, p=0.99999):
     histogram[-1] += len(x)
     
     # Get the bins that are above the threshold
-    has_value = (histogram &gt; threshold).nonzero()[0]
-    first, last = has_value[0] - 1, has_value[-1]
-    return cutoffs[first], cutoffs[last]
+    try:
+        has_value = (histogram &gt; threshold).nonzero()[0]
+        first, last = has_value[0] - 1, has_value[-1]
+        return cutoffs[first], cutoffs[last]
+    except:
+        raise RuntimeError(&#34;Bounds approximation failed.&#34;)
 
 def mean(x, epsilon, delta, bounds=False):
     &#34;&#34;&#34;
@@ -239,7 +242,7 @@ def bounded_continuous(x, low, high, epsilon):
 <h2 class="section-title" id="header-functions">Functions</h2>
 <dl>
 <dt id="tiresias.core.mechanisms.approximate_bounds"><code class="name flex">
-<span>def <span class="ident">approximate_bounds</span></span>(<span>x, epsilon=1.0, scale=0.1, base=2, bins=128, p=0.99999)</span>
+<span>def <span class="ident">approximate_bounds</span></span>(<span>x, epsilon=1.0, scale=0.1, base=2, bins=128, p=0.9999)</span>
 </code></dt>
 <dd>
 <section class="desc"><p>This function estimates the upper and lower bounds of the data using a
@@ -249,7 +252,7 @@ modification of the histogram approach from [1].</p>
 <summary>
 <span>Expand source code</span>
 </summary>
-<pre><code class="python">def approximate_bounds(x, epsilon=1.0, scale=0.1, base=2, bins=128, p=0.99999):
+<pre><code class="python">def approximate_bounds(x, epsilon=1.0, scale=0.1, base=2, bins=128, p=0.9999):
     &#34;&#34;&#34;
     This function estimates the upper and lower bounds of the data using a 
     modification of the histogram approach from [1].
@@ -276,9 +279,12 @@ modification of the histogram approach from [1].</p>
     histogram[-1] += len(x)
     
     # Get the bins that are above the threshold
-    has_value = (histogram &gt; threshold).nonzero()[0]
-    first, last = has_value[0] - 1, has_value[-1]
-    return cutoffs[first], cutoffs[last]</code></pre>
+    try:
+        has_value = (histogram &gt; threshold).nonzero()[0]
+        first, last = has_value[0] - 1, has_value[-1]
+        return cutoffs[first], cutoffs[last]
+    except:
+        raise RuntimeError(&#34;Bounds approximation failed.&#34;)</code></pre>
 </details>
 </dd>
 <dt id="tiresias.core.mechanisms.bounded_continuous"><code class="name flex">

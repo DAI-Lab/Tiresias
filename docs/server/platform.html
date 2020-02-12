@@ -56,9 +56,9 @@ class Platform(object):
         with self._lock:
             for tid in set(self._tasks.keys()):
                 if self._tasks[tid][&#34;status&#34;] == State.COMPLETE:
-                    del self._payloads[tid]
                     if time() - self._tasks[tid][&#34;start&#34;] &gt; timeout:
                         del self._tasks[tid]
+                        del self._payloads[tid]
     
     def run(self):
         &#34;&#34;&#34;
@@ -160,9 +160,9 @@ with a multi-threaded web server and stores everything in-memory.</p></section>
         with self._lock:
             for tid in set(self._tasks.keys()):
                 if self._tasks[tid][&#34;status&#34;] == State.COMPLETE:
-                    del self._payloads[tid]
                     if time() - self._tasks[tid][&#34;start&#34;] &gt; timeout:
                         del self._tasks[tid]
+                        del self._payloads[tid]
     
     def run(self):
         &#34;&#34;&#34;
@@ -285,9 +285,9 @@ timeout window.</p></section>
     with self._lock:
         for tid in set(self._tasks.keys()):
             if self._tasks[tid][&#34;status&#34;] == State.COMPLETE:
-                del self._payloads[tid]
                 if time() - self._tasks[tid][&#34;start&#34;] &gt; timeout:
-                    del self._tasks[tid]</code></pre>
+                    del self._tasks[tid]
+                    del self._payloads[tid]</code></pre>
 </details>
 </dd>
 <dt id="tiresias.server.platform.Platform.run"><code class="name flex">

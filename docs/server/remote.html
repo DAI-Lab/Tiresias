@@ -85,8 +85,11 @@ def fetch_task(server, task_id):
     obj = loads(obj)
     if &#34;error&#34; in obj:
         raise ValueError(obj[&#34;error&#34;])
-    if &#34;result&#34; in obj:
-        obj[&#34;result&#34;] = b64_decode(obj[&#34;result&#34;])
+    try:
+        if &#34;result&#34; in obj:
+            obj[&#34;result&#34;] = b64_decode(obj[&#34;result&#34;])
+    except:
+        pass
     return obj</code></pre>
 </details>
 </section>
